@@ -9,6 +9,8 @@ from linkedin.navigation.enums import MessageStatus
 from linkedin.navigation.enums import ProfileState
 from linkedin.navigation.exceptions import TerminalStateError, SkipProfile, ReachedConnectionLimit, AuthenticationError, DetectionError
 from linkedin.navigation.utils import save_page
+from linkedin.notifications import send_alert
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +109,7 @@ def process_profiles(handle, session, profiles: list[dict], enrich_only: bool = 
     from linkedin.conf import ASSETS_DIR
     
     tracker = UsageTracker(ASSETS_DIR)
+    tracker.record_session(handle)
     perform_connections = True
     MAX_ACTIONS = limit
     actions_count = 0 
@@ -146,6 +149,7 @@ def process_profiles(handle, session, profiles: list[dict], enrich_only: bool = 
                      actions_count += 1
                      session.profiles_scraped_this_batch += 1
                      tracker.increment(handle, "enrich_profiles")
+                     tracker.record_health_event(handle, "success")
                      logger.info(f"Action count: {actions_count}/{MAX_ACTIONS}")
 
                 continue_same_profile = bool(profile)
@@ -162,7 +166,17 @@ def process_profiles(handle, session, profiles: list[dict], enrich_only: bool = 
                 logger.info(
                     colored(f"Skipping profile: {public_identifier} reason: {e}", "red", attrs=["bold"])
                 )
+                send_alert(f"Weekly Connection Limit Reached for @{handle}.", category="limit")
                 continue_same_profile = False
             except (AuthenticationError, DetectionError) as e:
+                # Note: utils.py already records health event and alerts for these
                 logger.error(colored(f"🛑 CRITICAL ERROR: {e}. Stopping all operations.", "red", attrs=["bold"]))
                 return # Exit the entire function
+            except PlaywrightTimeoutError as e:
+                logger.error(f"Timeout processing {simple_profile['public_identifier']}: {e}")
+                tracker.record_health_event(handle, "timeout", details=str(e))
+                continue_same_profile = False
+            except Exception as e:
+                logger.error(f"Unexpected failure for {simple_profile['public_identifier']}: {e}", exc_info=True)
+                tracker.record_health_event(handle, "unknown_failure", details=str(e))
+                continue_same_profile = False

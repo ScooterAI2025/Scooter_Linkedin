@@ -25,7 +25,30 @@ DB_EXPORT_FILE = ASSETS_DIR / "candidates_detailed.csv"
 
 # Global state for process management
 current_process = None
-log_queue = asyncio.Queue()
+
+class Broadcaster:
+    def __init__(self):
+        self.clients = set()
+
+    async def subscribe(self):
+        queue = asyncio.Queue()
+        self.clients.add(queue)
+        try:
+            while True:
+                msg = await queue.get()
+                yield {"data": msg}
+        finally:
+            self.clients.remove(queue)
+
+    async def put(self, msg):
+        for queue in list(self.clients):
+            await queue.put(msg)
+
+broadcaster = Broadcaster()
+
+async def push_log(msg):
+    print(f"[SERVER] {msg}")
+    await broadcaster.put(msg)
 
 # CORS for local development
 app.add_middleware(
@@ -39,13 +62,13 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="ui/static"), name="static")
 
 async def read_stream(stream):
-    """Read stdout/stderr from subprocess and pushing to log queue."""
+    """Read stdout/stderr from subprocess and pushing to broadcaster."""
     while True:
         line = await stream.readline()
         if line:
             text = line.decode('utf-8').strip()
             print(f"[BOT] {text}")
-            await log_queue.put(text)
+            await broadcaster.put(text)
         else:
             break
 
@@ -57,32 +80,47 @@ async def read_index():
 @app.get("/api/logs")
 async def sse_logs(request: Request):
     """Server-Sent Events context for logging."""
+    print(f"🔌 [SERVER] New log stream connection established from {request.client.host}")
+    
     async def event_generator():
-        while True:
-            if await request.is_disconnected():
-                break
-            # Get log message (wait for it)
-            msg = await log_queue.get()
-            yield {"data": msg}
+        queue = asyncio.Queue()
+        broadcaster.clients.add(queue)
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    msg = await asyncio.wait_for(queue.get(), timeout=15.0)
+                    yield {"data": msg}
+                except asyncio.TimeoutError:
+                    yield {"data": "ping"}
+        finally:
+            broadcaster.clients.remove(queue)
+
     return EventSourceResponse(event_generator())
 
 @app.post("/api/harvest")
-async def start_harvest(
-    handle: str, 
-    search_url: str, 
-    job_id: str = "", 
-    role_name: str = "", 
-    company_name: str = "",
-    app_link: str = "",
-    location: str = "",
-    compensation: str = "",
-    start_page: int = 1, 
-    pages: int = 5
-):
+async def start_harvest(request: Request):
     global current_process
     if current_process and current_process.returncode is None:
         return JSONResponse({"status": "error", "message": "A process is already running."}, status_code=400)
     
+    data = await request.json()
+    handle = data.get("handle")
+    # Handle mapping from frontend names to backend expected names
+    search_url = data.get("url") or data.get("search_url")
+    job_id = data.get("job_id", "")
+    role_name = data.get("role_name", "")
+    company_name = data.get("company_name") or data.get("hiring_company", "")
+    app_link = data.get("app_link") or data.get("job_link", "")
+    location = data.get("location", "")
+    compensation = data.get("compensation", "")
+    start_page = data.get("start_page", 1)
+    pages = data.get("pages", 5)
+
+    if not handle or not search_url:
+        return JSONResponse({"status": "error", "message": "Handle and Search URL are required."}, status_code=422)
+
     cmd = [
         sys.executable, "-u", "harvest_search.py", 
         handle, search_url, str(start_page), str(pages), job_id, role_name, company_name, app_link, location, compensation
@@ -102,16 +140,20 @@ async def start_harvest(
     return {"status": "started", "pid": current_process.pid}
 
 @app.post("/api/apollo_harvest")
-async def start_apollo_harvest(
-    handle: str,
-    search_url: str,
-    limit: int = 50,
-    pages: int = 1
-):
+async def start_apollo_harvest(request: Request):
     global current_process
     if current_process and current_process.returncode is None:
         return JSONResponse({"status": "error", "message": "A process is already running."}, status_code=400)
     
+    data = await request.json()
+    handle = data.get("handle")
+    search_url = data.get("url") or data.get("search_url")
+    limit = data.get("limit", 50)
+    pages = data.get("pages", 1)
+
+    if not handle or not search_url:
+        return JSONResponse({"status": "error", "message": "Handle and Search URL are required."}, status_code=422)
+
     cmd = [
         sys.executable, "-u", "apollo_entry.py",
         "--handle", handle,
@@ -129,12 +171,50 @@ async def start_apollo_harvest(
     
     msg = f"🛰️ Launching Apollo Source: {search_url} (Limit: {limit})"
     print(f"[SERVER] {msg}")
-    await log_queue.put(msg)
+    await push_log(msg)
     
     asyncio.create_task(read_stream(current_process.stdout))
     asyncio.create_task(read_stream(current_process.stderr))
     
     return {"status": "started", "pid": current_process.pid}
+
+@app.post("/api/clay_harvest")
+async def start_clay_harvest(request: Request):
+    global current_process
+    if current_process and current_process.returncode is None:
+        return JSONResponse({"status": "error", "message": "A process is already running."}, status_code=400)
+    
+    data = await request.json()
+    handle = data.get("handle")
+    url = data.get("url")
+    limit = data.get("limit", 50)
+
+    if not handle or not url:
+        return JSONResponse({"status": "error", "message": "Handle and URL are required."}, status_code=422)
+
+    cmd = [
+        sys.executable, "-u", "clay_entry.py",
+        "--handle", handle,
+        "--url", url,
+        "--limit", str(limit)
+    ]
+    
+    current_process = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        cwd=str(BASE_DIR)
+    )
+    
+    msg = f"💎 Launching Clay Workbook: {url} (Limit: {limit})"
+    print(f"[SERVER] {msg}")
+    await push_log(msg)
+    
+    asyncio.create_task(read_stream(current_process.stdout))
+    asyncio.create_task(read_stream(current_process.stderr))
+    
+    return {"status": "started", "pid": current_process.pid}
+
 
 @app.get("/api/scraped_data")
 def get_scraped_data():
@@ -179,6 +259,7 @@ async def start_campaign(req: Request):
     enrich_only = data.get("enrich_only", False)
     limit = data.get("limit", 20)
     urls = data.get("urls")
+    note = data.get("note")
 
     global current_process
     if current_process and current_process.returncode is None:
@@ -194,6 +275,10 @@ async def start_campaign(req: Request):
     if urls and isinstance(urls, list):
         cmd.append("--urls")
         cmd.extend(urls)
+        
+    if note:
+        cmd.append("--note")
+        cmd.append(note)
     
     current_process = await asyncio.create_subprocess_exec(
         *cmd,
@@ -204,12 +289,19 @@ async def start_campaign(req: Request):
     
     msg = f"Starting campaign for @{handle} (Enrich: {enrich_only}, Limit: {limit})"
     print(f"[SERVER] {msg}")
-    await log_queue.put(msg)
+    await push_log(msg)
     
     asyncio.create_task(read_stream(current_process.stdout))
     asyncio.create_task(read_stream(current_process.stderr))
     
     return {"status": "started", "pid": current_process.pid}
+
+@app.get("/api/process_status")
+def get_process_status():
+    global current_process
+    if current_process and current_process.returncode is None:
+        return {"busy": True, "pid": current_process.pid}
+    return {"busy": False}
 
 @app.post("/api/stop")
 async def stop_process():
@@ -217,7 +309,7 @@ async def stop_process():
     
     msg = "🛑 [SERVER] Stop request received. Terminating processes..."
     print(msg)
-    await log_queue.put(msg)
+    await push_log(msg)
     
     # 1. Primary: Stop the tracked process
     if current_process:
@@ -256,7 +348,7 @@ async def stop_process():
         if count > 0:
             msg = f"🧹 [SERVER] Cleaned up {count} orphaned bot processes."
             print(msg)
-            await log_queue.put(msg)
+            await push_log(msg)
     except ImportError:
         # psutil not installed, fallback to basic pkill command
         os.system("pkill -9 -f 'harvest_search.py|main.py|check_replies.py'")
@@ -310,6 +402,12 @@ def get_results(handle: str = None, refresh: bool = False):
         try: pid = url_to_public_id(url)
         except: pass
         
+        # Detect Source
+        source = "LinkedIn"
+        role_lower = (row.get("role_name") or "").lower()
+        if "clay" in role_lower: source = "Clay"
+        elif "apollo" in role_lower: source = "Apollo"
+
         # Default data from CSV (The "Constant" part)
         record = {
             "Full Name": row.get("candidate_name") or "Harvested Profile",
@@ -321,6 +419,8 @@ def get_results(handle: str = None, refresh: bool = False):
             "About": "",
             "Status": "HARVESTED",
             "URL": url,
+            "LinkedIn URL": url, # Explicit field for sorting/display
+            "Source": source,
             "Picture": row.get("candidate_pic") or ""
         }
 
@@ -451,6 +551,12 @@ def get_results(handle: str = None, refresh: bool = False):
             skills = data.get("skills", [])
             skills_str = ", ".join([str(s) for s in skills[:12]]) if isinstance(skills, list) else ""
                 
+            # Detect Source for legacy
+            source = "LinkedIn"
+            role_lower = (data.get("role_name") or "").lower()
+            if "clay" in role_lower: source = "Clay"
+            elif "apollo" in role_lower: source = "Apollo"
+
             final_results.append({
                 "Full Name": data.get("full_name") or data.get("name") or "Legacy Candidate",
                 "Role": data.get("role_name") or "Old Campaign",
@@ -463,7 +569,9 @@ def get_results(handle: str = None, refresh: bool = False):
                 "Phone": data.get("phone") or "",
                 "About": data.get("summary") or data.get("about") or "",
                 "Status": p.state.upper(),
-                "URL": f"https://www.linkedin.com/in/{pid}"
+                "URL": f"https://www.linkedin.com/in/{pid}",
+                "LinkedIn URL": f"https://www.linkedin.com/in/{pid}",
+                "Source": source
             })
 
     # 5. Newest first
@@ -603,6 +711,60 @@ def get_usage(handle: str):
 
     results["is_safe_all"] = is_safe_all
     return results
+
+@app.get("/api/health_report")
+def get_health_summary():
+    from linkedin.usage_tracker import UsageTracker, SAFETY_CONFIG
+    from linkedin.conf import ASSETS_DIR, list_active_accounts
+    
+    tracker = UsageTracker(ASSETS_DIR)
+    accounts = list_active_accounts()
+    
+    report = []
+    for handle in accounts:
+        # General Usage Stats
+        daily_searches = tracker.get_count(handle, "people_searches", "daily")
+        daily_cards = tracker.get_count(handle, "harvested_cards", "daily")
+        daily_enrich = tracker.get_count(handle, "enrich_profiles", "daily")
+        
+        # Health Stats
+        health = tracker.get_health_stats(handle, timeframe="daily")
+        success = health.get("success", 0)
+        captchas = health.get("captcha", 0)
+        restricted = health.get("restricted", 0)
+        timeouts = health.get("timeout", 0)
+        failures = health.get("unknown_failure", 0)
+        
+        total_actions = success + captchas + restricted + timeouts + failures
+        success_rate = (success / total_actions * 100) if total_actions > 0 else 100
+        
+        # Determine Status
+        status = "HEALTHY"
+        if captchas > 0 or restricted > 0:
+            status = "RESTRICTED"
+        elif timeouts > 2 or failures > 2:
+            status = "UNSTABLE"
+            
+        report.append({
+            "handle": handle,
+            "status": status,
+            "daily_usage": {
+                "searches": daily_searches,
+                "cards": daily_cards,
+                "enrichment": daily_enrich
+            },
+            "automation_metrics": {
+                "success_rate": round(success_rate, 1),
+                "success": success,
+                "captchas": captchas,
+                "restricted": restricted,
+                "timeouts": timeouts,
+                "unknown_failure": failures
+            },
+            "last_failure_note": health.get("last_failure_note", "")
+        })
+    
+    return report
     
 @app.get("/api/queue")
 def get_queue(handle: str = None):
@@ -691,13 +853,18 @@ async def save_queue(request: Request):
 
 
 @app.post("/api/check_replies")
-async def check_replies_now(handle: str):
+async def check_replies_now(request: Request):
     """Manually trigger reply checking for a specific account."""
     global current_process
     if current_process and current_process.returncode is None:
         return JSONResponse({"status": "error", "message": "Another process is running."}, status_code=400)
     
-    cmd = [sys.executable, "-u", "check_replies.py"]
+    data = await request.json()
+    handle = data.get("handle")
+    if not handle:
+        return JSONResponse({"status": "error", "message": "Handle is required."}, status_code=422)
+
+    cmd = [sys.executable, "-u", "check_replies.py", handle]
     
     current_process = await asyncio.create_subprocess_exec(
         *cmd,
@@ -706,14 +873,15 @@ async def check_replies_now(handle: str):
         cwd=str(BASE_DIR)
     )
     
-    msg = f"Checking for new replies..."
+    msg = f"🔍 Checking for new replies on @{handle}..."
     print(f"[SERVER] {msg}")
-    await log_queue.put(msg)
+    await push_log(msg)
     
     asyncio.create_task(read_stream(current_process.stdout))
     asyncio.create_task(read_stream(current_process.stderr))
     
     return {"status": "started", "pid": current_process.pid}
+
 
 
 if __name__ == "__main__":

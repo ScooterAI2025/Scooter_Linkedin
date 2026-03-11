@@ -15,8 +15,9 @@ def send_connection_request(
         profile: Dict[str, Any],
 ) -> ProfileState:
     """
-    Sends a LinkedIn connection request WITHOUT a note (fastest & safest).
-    All note-sending logic preserved below for future use.
+    Sends a LinkedIn connection request. 
+    If profile['note'] exists, it sends with a personalized note.
+    Otherwise, it sends a direct invitation without a note.
     """
     from linkedin.actions.connection_status import get_connection_status
 
@@ -25,6 +26,7 @@ def send_connection_request(
     )
 
     public_identifier = profile.get('public_identifier')
+    note = profile.get('note')
 
     logger.debug("Checking current connection status...")
     connection_status = get_connection_status(session, profile)
@@ -39,16 +41,24 @@ def send_connection_request(
         logger.info("Skipping %s – %s", public_identifier, skip_reasons[connection_status])
         return connection_status
 
-    # Send invitation WITHOUT note (current active flow)
-    s1 = _connect_direct(session)
-    s2 = s1 or _connect_via_more(session)
+    if note:
+        logger.info(f"Sending connection request WITH NOTE to {public_identifier}")
+        success = _perform_send_invitation_with_note(session, note)
+    else:
+        logger.info(f"Sending connection request WITHOUT NOTE to {public_identifier}")
+        # Send invitation WITHOUT note
+        s1 = _connect_direct(session)
+        s2 = s1 or _connect_via_more(session)
+        s3 = s2 and _click_without_note(session)
+        success = s3
 
-    s3 = s2 and _click_without_note(session)
-    s4 = s3 and _check_weekly_invitation_limit(session)
-    success = s4
+    if success:
+        _check_weekly_invitation_limit(session)
+        status = ProfileState.PENDING
+    else:
+        status = ProfileState.ENRICHED
 
-    status = ProfileState.PENDING if success else ProfileState.ENRICHED
-    logger.info(f"Connection request {status} → {public_identifier}")
+    logger.info(f"Connection request {status.value} → {public_identifier}")
     return status
 
 
@@ -149,6 +159,7 @@ def _perform_send_invitation_with_note(session, message: str):
     session.page.locator('button:has-text("Send"), button[aria-label*="Send invitation"]').first.click(force=True)
     session.wait()
     logger.debug("Connection request with note sent")
+    return True
 
 
 if __name__ == "__main__":

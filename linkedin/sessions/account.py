@@ -17,31 +17,45 @@ MAX_API_DELAY = 0.500
 
 def human_delay(min_val, max_val, mode="normal"):
     """
-    Advanced human-like delay with Gaussian distribution.
-    - 'normal': Standard jitter
-    - 'burst': Quick succession interactions
-    - 'break': Long distraction pause
+    Ultra-erratic human delay with micro-jittering and multi-stage sleeps.
+    - 'normal': Standard jitter with high precision (e.g., 35.234s)
+    - 'burst': Quick clicks (e.g., 1.259s)
+    - 'break': Long distraction pause (2 - 7 minutes)
     """
-    if mode == "burst":
-        # Quick actions (e.g. clicking through steps)
-        delay = random.gauss((min_val + max_val) / 2, (max_val - min_val) / 4)
-        delay = max(min_val, min(delay, max_val))
-    elif mode == "break":
-        # Coffee break / Reading (2 - 7 minutes)
-        delay = random.uniform(120, 420)
-        logger.info(colored(f"☕ Taking a human 'reading break' for {delay/60:.1f} minutes...", "yellow"))
+    # 1. Base Delay Calculation
+    if mode == "break":
+        base_delay = random.uniform(120.34, 420.89)
+        logger.info(colored(f"☕ Taking an organic break for {base_delay/60:.2f} minutes...", "yellow"))
+    elif mode == "burst":
+        base_delay = random.gauss((min_val + max_val) / 2, (max_val - min_val) / 4)
+        base_delay = max(min_val * 0.8, min(base_delay, max_val * 1.2))
     else:
-        # Standard Profile-to-Profile or UI pacing
-        # Use Gaussian centered between min/max
+        # Standard Profile pacing
         mu = (min_val + max_val) / 2
-        sigma = (max_val - min_val) / 6
-        delay = random.gauss(mu, sigma)
+        sigma = (max_val - min_val) / 5 # Wider variance
+        base_delay = random.gauss(mu, sigma)
         
-        # Clamp to bounds but allow occasional outliers
-        delay = max(min_val * 0.7, min(delay, max_val * 1.3))
+        # Add "Organic Noise" (The 35.20 and 41.9 feel)
+        noise = random.uniform(-2.5, 2.5) 
+        base_delay = max(min_val * 0.9, min(base_delay + noise, max_val * 1.1))
+
+    # 2. Multi-Stage Sleep (Simulate human eye-scanning)
+    # Instead of one big sleep, we sleep in small random chunks
+    remaining = base_delay
+    logger.info(f"Stealth Pause: {base_delay:.3f}s ({mode})")
     
-    logger.debug(f"Stealth Pause: {delay:.2f}s ({mode})")
-    time.sleep(delay)
+    while remaining > 0:
+        chunk = random.uniform(0.5, 4.5) # Sleep in 0.5s to 4.5s chunks
+        sleep_time = min(chunk, remaining)
+        
+        # Add micro-jitter (milliseconds)
+        jitter = random.uniform(0.001, 0.099)
+        time.sleep(max(0, sleep_time + jitter))
+        remaining -= sleep_time
+        
+        # Occasionally simulate a "mouse wiggle" pause
+        if mode != "burst" and random.random() < 0.1:
+            time.sleep(random.uniform(0.1, 0.8))
 
 from termcolor import colored
 
@@ -146,6 +160,41 @@ class AccountSession:
             profile, data = api.get_profile(profile_url=url)
             save_scraped_profile(self, url, profile, data)
             logger.debug(f"Auto-scraped → {profile.get('full_name')} – {url}") if profile else None
+
+    def human_scroll(self):
+        """
+        Simulates natural human scrolling behavior to trigger LinkedIn's 
+        visibility and activity tracking.
+        """
+        if not self.page:
+            return
+            
+        logger.info(f"🛡️ Performing human-like scrolling for {self.handle}...")
+        try:
+            # 1. Random initial pause
+            time.sleep(random.uniform(1, 3))
+            
+            # 2. Variable speed scroll down
+            total_height = self.page.evaluate("document.body.scrollHeight")
+            current_pos = 0
+            while current_pos < total_height * 0.7: # Scroll ~70% down
+                step = random.randint(200, 600)
+                current_pos += step
+                self.page.evaluate(f"window.scrollTo({{top: {current_pos}, behavior: 'smooth'}})")
+                time.sleep(random.uniform(0.5, 1.5))
+                
+                # Update total height in case of lazy loading
+                total_height = self.page.evaluate("document.body.scrollHeight")
+
+            # 3. Brief "reading" pause at the bottom
+            time.sleep(random.uniform(2, 5))
+            
+            # 4. Quick scroll back to top
+            self.page.evaluate("window.scrollTo({top: 0, behavior: 'smooth'})")
+            time.sleep(random.uniform(1, 2))
+            
+        except Exception as e:
+            logger.warning(f"Scroll simulation failed (non-critical): {e}")
 
     def close(self):
         if self.context:

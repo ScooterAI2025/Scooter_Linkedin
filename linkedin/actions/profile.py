@@ -21,12 +21,20 @@ def scrape_profile(handle: str, profile: dict):
         handle=handle,
     )
 
-    # ── Existing enrichment logic (100% unchanged) ──
+    # ── SAFE HUMAN NAVIGATION ──
     session.ensure_browser()
-    session.wait()
-
+    
+    # 1. Navigate to the profile page (Physical view)
+    logger.info(f"Navigating to profile: {url}")
+    session.page.goto(url, wait_until="domcontentloaded", timeout=60000)
+    session.page.bring_to_front()
+    
+    # 2. Wait and Scroll (Mimic human reading)
+    session.wait(min_delay=5, max_delay=10) # Initial human-like pause
+    session.human_scroll()
+    
+    # 3. Pull Data (API call now occurs from a valid "viewing" state)
     api = PlaywrightLinkedinAPI(session=session)
-
     logger.info("Enriching profile → %s", url)
     enriched_profile, data = api.get_profile(profile_url=url)
 

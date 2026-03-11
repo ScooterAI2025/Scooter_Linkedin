@@ -96,6 +96,10 @@
             box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
         }
 
+        .view-section {
+            padding-bottom: 5rem;
+        }
+
         .nav-active {
             background-color: #F0FDF4;
             /* Light Green Tint */
@@ -106,20 +110,51 @@
 
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
-            width: 6px;
+            width: 10px;
         }
 
         ::-webkit-scrollbar-track {
-            background: transparent;
+            background: #E2E8F0;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #CBD5E1;
+            background: #475569;
             border-radius: 10px;
+            border: 2px solid #E2E8F0;
         }
 
         ::-webkit-scrollbar-thumb:hover {
+            background: #1E293B;
+        }
+
+        /* Force visibility on Mac */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #475569 #E2E8F0;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #F1F5F9;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 10px;
+            border: 2px solid #F1F5F9;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #94A3B8;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #1E293B;
         }
     </style>
 </head>
@@ -161,10 +196,16 @@
 
         <!-- Sidebar -->
         <div
-            class="w-72 bg-white/50 backdrop-blur-sm border-r border-gray-100 p-6 flex flex-col gap-2 z-10 card-shadow">
+            class="w-72 shrink-0 min-w-[18rem] bg-white/90 backdrop-blur-md border-r border-gray-100 p-6 flex flex-col gap-2 z-20 card-shadow overflow-y-auto custom-scrollbar transition-all">
             <div class="mb-8">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1 mb-2 block">Active
-                    Account</label>
+                <div class="flex items-center justify-between mb-2 ml-1">
+                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Account</label>
+                    <div id="bot-status-indicator"
+                        class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 text-gray-400 text-[10px] font-black uppercase tracking-tighter">
+                        <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                        Idle
+                    </div>
+                </div>
                 <div class="relative group">
                     <i
                         class="fa-solid fa-envelope absolute left-3 top-3.5 text-gray-400 group-focus-within:text-scooter-orange transition-colors"></i>
@@ -175,12 +216,12 @@
 
             <nav class="space-y-2">
                 <button onclick="switchTab('harvest')" id="tab-harvest"
-                    class="nav-active w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-green-50/50 transition-all text-gray-700">
+                    class="nav-active w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-green-50/50 transition-all text-gray-700 whitespace-nowrap">
                     <i class="fa-solid fa-seedling text-lg text-scooter-green"></i>
                     <span class="text-sm font-bold">Harvest Leads</span>
                 </button>
                 <button onclick="switchTab('queue')" id="tab-queue"
-                    class="w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-orange-50/50 transition-all text-gray-700">
+                    class="w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-orange-50/50 transition-all text-gray-700 whitespace-nowrap">
                     <i class="fa-solid fa-list-check text-lg text-scooter-orange"></i>
                     <span class="text-sm font-bold">Review Queue</span>
                     <span id="queue-badge"
@@ -188,21 +229,35 @@
                 </button>
                 <div class="my-2 border-t border-gray-100 opacity-50"></div>
                 <button onclick="switchTab('apollo')" id="tab-apollo"
-                    class="w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-teal-50/50 transition-all text-gray-700">
+                    class="w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-teal-50/50 transition-all text-gray-700 whitespace-nowrap">
                     <i class="fa-solid fa-satellite-dish text-lg text-scooter-apollo"></i>
                     <span class="text-sm font-bold">Apollo Discovery</span>
                     <span
-                        class="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ml-auto">New</span>
+                        class="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ml-auto">Alt</span>
+                </button>
+                <button onclick="switchTab('clay')" id="tab-clay"
+                    class="w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-purple-50/50 transition-all text-gray-700 whitespace-nowrap">
+                    <i class="fa-solid fa-gem text-lg text-purple-600"></i>
+                    <span class="text-sm font-bold">Clay Enrichment</span>
+                    <span
+                        class="bg-purple-100 text-purple-600 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ml-auto">Pro</span>
                 </button>
                 <button onclick="switchTab('campaign')" id="tab-campaign"
-                    class="w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-blue-50/50 transition-all text-gray-700">
+                    class="w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-blue-50/50 transition-all text-gray-700 whitespace-nowrap">
                     <i class="fa-solid fa-paper-plane text-lg text-blue-500"></i>
                     <span class="text-sm font-bold">Manage Campaign</span>
                 </button>
                 <button onclick="switchTab('results')" id="tab-results"
-                    class="w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-green-50/50 transition-all text-gray-700">
-                    <i class="fa-solid fa-users-viewfinder text-lg text-scooter-green"></i>
+                    class="w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-green-50/50 transition-all text-gray-700 whitespace-nowrap">
+                    <i class="fa-solid fa-users text-lg text-scooter-green"></i>
                     <span class="text-sm font-bold">View Candidates</span>
+                </button>
+                <button onclick="switchTab('health')" id="tab-health"
+                    class="w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-red-50/50 transition-all text-gray-700 whitespace-nowrap">
+                    <i class="fa-solid fa-heart-pulse text-lg text-red-500"></i>
+                    <span class="text-sm font-bold">Health Center</span>
+                    <span id="health-alert-badge"
+                        class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto animate-pulse">!</span>
                 </button>
             </nav>
 
@@ -298,10 +353,10 @@
         </div>
 
         <!-- Content Area -->
-        <div class="flex-1 overflow-y-auto p-10 relative">
+        <div class="flex-1 overflow-y-auto p-10 relative custom-scrollbar min-w-0">
 
             <!-- VIEW: HARVEST -->
-            <div id="view-harvest" class="view-section max-w-4xl mx-auto animate-slide-up">
+            <div id="view-harvest" class="view-section max-w-4xl mx-auto">
 
                 <div class="mb-8">
                     <h2 class="text-3xl font-bold text-gray-800 mb-2">Lead Discovery</h2>
@@ -441,53 +496,54 @@
                                 <i class="fa-solid fa-play"></i> Start Harvesting Matches
                             </button>
                         </div>
+                    </div>
+                </div>
 
-                        <!-- Harvested Data Review -->
-                        <div class="mt-8 border-t border-gray-100 pt-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-bold text-gray-800">Harvested Candidates</h3>
-                                <div class="flex space-x-2">
-                                    <button onclick="loadScrapedData()"
-                                        class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-gray-600 font-bold transition-colors">
-                                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                                    </button>
-                                    <a href="/api/download_csv" target="_blank"
-                                        class="text-xs bg-scooter-charcoal hover:bg-black px-3 py-1.5 rounded-lg text-white font-bold flex items-center transition-colors">
-                                        <i class="fas fa-download mr-1"></i> CSV
-                                    </a>
-                                </div>
-                            </div>
-
-                            <div
-                                class="bg-white rounded-xl overflow-hidden border border-gray-100 max-h-64 overflow-y-auto custom-scrollbar shadow-sm">
-                                <table class="w-full text-sm text-left">
-                                    <thead
-                                        class="text-xs uppercase bg-gray-50 text-gray-500 sticky top-0 font-bold tracking-wider">
-                                        <tr>
-                                            <th class="px-4 py-3">Role</th>
-                                            <th class="px-4 py-3">Company</th>
-                                            <th class="px-4 py-3">Location</th>
-                                            <th class="px-4 py-3 text-right">Profile</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="scraped-data-body" class="divide-y divide-gray-100">
-                                        <tr>
-                                            <td colspan="4" class="px-4 py-8 text-center text-gray-400 font-medium">
-                                                Click Refresh to see data</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="mt-3 text-xs text-center text-gray-400 font-medium">
-                                * These candidates will be queued for the messaging campaign.
-                            </div>
+                <!-- Harvested Data Review -->
+                <div class="mt-8 border-t border-gray-100 pt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-800">Harvested Candidates</h3>
+                        <div class="flex space-x-2">
+                            <button onclick="loadScrapedData()"
+                                class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-gray-600 font-bold transition-colors">
+                                <i class="fas fa-sync-alt mr-1"></i> Refresh
+                            </button>
+                            <a href="/api/download_csv" target="_blank"
+                                class="text-xs bg-scooter-charcoal hover:bg-black px-3 py-1.5 rounded-lg text-white font-bold flex items-center transition-colors">
+                                <i class="fas fa-download mr-1"></i> CSV
+                            </a>
                         </div>
+                    </div>
+
+                    <div
+                        class="bg-white rounded-xl overflow-hidden border border-gray-100 max-h-64 overflow-y-auto custom-scrollbar shadow-sm">
+                        <table class="w-full text-sm text-left">
+                            <thead
+                                class="text-xs uppercase bg-gray-50 text-gray-500 sticky top-0 font-bold tracking-wider">
+                                <tr>
+                                    <th class="px-4 py-3">Role</th>
+                                    <th class="px-4 py-3">Company</th>
+                                    <th class="px-4 py-3">Location</th>
+                                    <th class="px-4 py-3 text-right">Profile</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scraped-data-body" class="divide-y divide-gray-100">
+                                <tr>
+                                    <td colspan="4" class="px-4 py-8 text-center text-gray-400 font-medium">
+                                        Click Refresh to see data</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 text-xs text-center text-gray-400 font-medium">
+                        * These candidates will be queued for the messaging campaign.
                     </div>
                 </div>
             </div>
 
+
             <!-- VIEW: APOLLO -->
-            <div id="view-apollo" class="view-section hidden max-w-4xl mx-auto animate-slide-up">
+            <div id="view-apollo" class="view-section hidden max-w-4xl mx-auto">
 
                 <div class="mb-8">
                     <h2 class="text-3xl font-bold text-gray-800 mb-2">Apollo Lead Sourcing</h2>
@@ -496,7 +552,8 @@
 
                 <!-- Input Card -->
                 <div class="bg-white rounded-3xl p-8 card-shadow border border-white mb-6 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-teal-50 rounded-bl-full z-0 opacity-50"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-teal-50 rounded-bl-full z-0 opacity-50">
+                    </div>
 
                     <div class="flex items-center gap-3 mb-6 relative z-10">
                         <span
@@ -561,20 +618,110 @@
                     </div>
                     <div>
                         <h4 class="font-bold text-lg mb-1">Direct Data Access</h4>
-                        <p class="text-sm text-teal-50 text-balance opacity-90">Apollo extraction automatically captures
-                            personal emails and professional phone numbers, bypassing the need for manual enrichment.
+                        <p class="text-sm text-teal-50 text-balance opacity-90">Apollo extraction automatically
+                            captures
+                            personal emails and professional phone numbers, bypassing the need for manual
+                            enrichment.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: CLAY -->
+            <div id="view-clay" class="view-section hidden max-w-4xl mx-auto">
+
+                <div class="mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Clay Power-Sourcing</h2>
+                    <p class="text-gray-500">Enrich and extract deep intelligence from your Clay Workbooks.</p>
+                </div>
+
+                <!-- Input Card -->
+                <div class="bg-white rounded-3xl p-8 card-shadow border border-white mb-6 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-bl-full z-0 opacity-50">
+                    </div>
+
+                    <div class="flex items-center gap-3 mb-6 relative z-10">
+                        <span
+                            class="bg-purple-100 text-purple-600 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Step
+                            1</span>
+                        <h3 class="text-xl font-bold text-gray-800">Workbook Link</h3>
+                    </div>
+
+                    <div class="space-y-6 relative z-10">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Clay
+                                Table/Workbook URL</label>
+                            <div class="relative group">
+                                <i
+                                    class="fa-solid fa-gem absolute left-4 top-3.5 text-gray-400 group-focus-within:text-purple-600 transition-colors"></i>
+                                <input type="text" id="clay-url" placeholder="https://app.clay.com/workspaces/..."
+                                    class="w-full bg-scooter-input border-none rounded-xl pl-12 pr-4 py-3 text-sm text-gray-600 font-medium outline-none focus:ring-2 focus:ring-purple-600/20 transition-all">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Extract
+                                    Limit</label>
+                                <div class="relative group">
+                                    <i
+                                        class="fa-solid fa-layer-group absolute left-4 top-3.5 text-gray-400 group-focus-within:text-purple-600 transition-colors"></i>
+                                    <input type="number" id="clay-limit" value="50"
+                                        class="w-full bg-scooter-input border-none rounded-xl pl-12 pr-4 py-3 text-sm text-gray-700 font-bold outline-none focus:ring-2 focus:ring-purple-600/20 transition-all">
+                                </div>
+                            </div>
+                            <div class="flex items-end">
+                                <p class="text-[10px] text-gray-400 mb-4 italic leading-tight">Clay tables can
+                                    be
+                                    very large. We recommend processing in batches of 50-100 for maximum
+                                    stability.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="pt-4">
+                            <button onclick="startClayHarvest()"
+                                class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-purple-700/20 transform transition-all active:scale-[0.98] flex justify-center gap-3 items-center text-lg">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Sync Workbook Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Card -->
+                <div
+                    class="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 rounded-3xl text-white flex items-center gap-6 shadow-xl">
+                    <div
+                        class="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center flex-shrink-0 animate-float">
+                        <i class="fa-solid fa-robot text-3xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-lg mb-1">Autonomous Enrichment</h4>
+                        <p class="text-sm text-purple-50 text-balance opacity-90">Our Clay integration maps
+                            columns
+                            automatically. Just link the workbook, and the bot will pull names, emails, and
+                            LinkedIn
+                            profiles directly into your outreach queue.
                         </p>
                     </div>
                 </div>
             </div>
 
             <!-- VIEW: QUEUE -->
-            <div id="view-queue" class="view-section hidden space-y-6 animate-slide-up">
+            <div id="view-queue" class="view-section hidden space-y-6">
                 <div class="flex justify-between items-center mb-4">
-                    <div>
-                        <h2 class="text-3xl font-bold text-gray-800">Review Candidates</h2>
-                        <p class="text-sm text-gray-500 mt-1">Approve or reject candidates before the campaign starts.
-                        </p>
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-12 h-12 bg-scooter-orange/10 rounded-2xl flex items-center justify-center text-scooter-orange">
+                            <i class="fa-solid fa-list-check text-2xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-3xl font-bold text-gray-800">Review Candidates</h2>
+                            <p class="text-sm text-gray-500 mt-1">Approve or reject candidates before the
+                                campaign
+                                starts.</p>
+                        </div>
                     </div>
                     <div class="flex gap-3 items-center">
                         <div class="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100"
@@ -642,7 +789,8 @@
                             <tbody id="queue-table-body" class="text-sm text-gray-600 divide-y divide-gray-50">
                                 <!-- Data injected here -->
                                 <tr>
-                                    <td colspan="3" class="p-10 text-center text-gray-400 italic">No candidates in
+                                    <td colspan="3" class="p-10 text-center text-gray-400 italic">No candidates
+                                        in
                                         queue. Harvest some first!</td>
                                 </tr>
                             </tbody>
@@ -731,19 +879,22 @@
                 </div>
             </div>
 
-            <!-- VIEW: CAMPAIGN -->
-            <div id="view-campaign" class="view-section hidden max-w-3xl mx-auto space-y-8 animate-slide-up">
 
+
+            <!-- VIEW: CAMPAIGN -->
+            <div id="view-campaign" class="view-section hidden max-w-3xl mx-auto space-y-8">
                 <div class="text-center mb-8">
                     <h2 class="text-3xl font-bold text-gray-800">Campaign Launcher</h2>
                     <p class="text-gray-500 mt-2">Activate the bot to connect and message your harvested leads.</p>
                 </div>
 
+
                 <div class="flex gap-6">
                     <div
                         class="bg-white p-6 rounded-3xl flex-1 card-shadow border border-white flex items-center justify-between group hover:-translate-y-1 transition-transform duration-300">
                         <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Daily Safety Cap</p>
+                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Daily Safety Cap
+                            </p>
                             <h3 class="text-3xl font-bold text-gray-800 mt-1">30</h3>
                             <p class="text-xs text-scooter-green font-medium mt-1">Actions / Day</p>
                         </div>
@@ -779,24 +930,96 @@
                             <i class="fa-solid fa-rocket text-5xl text-scooter-orange"></i>
                         </div>
                         <h2 class="text-2xl font-bold text-white mb-3">Ready for takeoff?</h2>
-                        <p class="text-gray-400 mb-8 max-w-md mx-auto text-sm leading-relaxed">The bot will perform
-                            opportunistic connections and utilize AI to generate personalized messages for your leads.
-                        </p>
+                        <div class="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/10 mb-8 text-left">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-10 h-10 bg-scooter-orange/20 rounded-xl flex items-center justify-center text-scooter-orange">
+                                        <i class="fa-solid fa-user-shield text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-white">Account Safety Mode</h4>
+                                        <p class="text-[10px] text-gray-400">Essential for Personal Accounts</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3 bg-white/5 p-1 rounded-xl border border-white/10">
+                                    <button onclick="setSafeMode(false)" id="mode-fast"
+                                        class="px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all text-gray-400">FAST</button>
+                                    <button onclick="setSafeMode(true)" id="mode-safe"
+                                        class="px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all bg-scooter-green text-white shadow-lg shadow-green-500/20">PROTECTED</button>
+                                </div>
+                            </div>
 
-                        <button onclick="startCampaign()"
-                            class="bg-scooter-green hover:bg-white hover:text-scooter-green text-white font-bold px-10 py-4 rounded-2xl shadow-lg shadow-black/30 transition-all transform hover:scale-105 active:scale-95 text-lg">
-                            <i class="fa-solid fa-power-off mr-2"></i> Launch Automation
-                        </button>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="space-y-1.5">
+                                    <div class="space-y-1.5">
+                                        <label
+                                            class="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Daily
+                                            Enrichment Cap</label>
+                                        <div class="relative">
+                                            <i
+                                                class="fa-solid fa-gauge-high absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                                            <input type="number" id="daily-limit" value="10"
+                                                class="w-full bg-black/20 border border-white/10 text-white rounded-2xl py-3 pl-10 pr-4 text-xs font-bold focus:border-scooter-green/50 outline-none transition-all">
+                                        </div>
+                                    </div>
+                                    <div class="space-y-1.5">
+                                        <label
+                                            class="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Processing
+                                            Mode</label>
+                                        <div
+                                            class="flex items-center h-[46px] bg-black/20 border border-white/10 rounded-2xl px-4 gap-3">
+                                            <input type="checkbox" id="enrich-only" checked
+                                                class="w-4 h-4 rounded border-white/20 bg-transparent text-scooter-green focus:ring-scooter-green"
+                                                onchange="document.getElementById('note-section').style.opacity = this.checked ? '0.3' : '1'">
+                                            <span class="text-xs font-bold text-gray-300">Enrichment Only</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="note-section" class="mt-6 space-y-2 transition-opacity duration-300">
+                                    <div class="flex items-center justify-between ml-1">
+                                        <label
+                                            class="text-[9px] font-black text-gray-500 uppercase tracking-widest">Personalized
+                                            Connection Note</label>
+                                        <span id="note-char-count" class="text-[9px] text-gray-500 font-bold">0 /
+                                            200</span>
+                                    </div>
+                                    <div class="relative">
+                                        <i
+                                            class="fa-solid fa-comment-dots absolute left-4 top-4 text-gray-500 text-xs"></i>
+                                        <textarea id="connection-note" rows="3" maxlength="200"
+                                            oninput="document.getElementById('note-char-count').innerText = this.value.length + ' / 200'"
+                                            placeholder="Hey! Its great connecting with you. I think this collaboration can bring me a lot of new learnings.."
+                                            class="w-full bg-black/30 border border-white/10 text-white rounded-2xl py-4 pl-10 pr-4 text-xs leading-relaxed focus:border-scooter-green/50 outline-none transition-all resize-none"></textarea>
+                                    </div>
+                                    <p class="text-[9px] text-gray-500 italic ml-1">Tip: This message will be sent with
+                                        every connection request.</p>
+                                </div>
+                            </div>
+
+                            <button onclick="startCampaign()"
+                                class="bg-scooter-green hover:bg-white hover:text-scooter-green text-white font-bold px-10 py-4 rounded-2xl shadow-lg shadow-black/30 transition-all transform hover:scale-105 active:scale-95 text-lg">
+                                <i class="fa-solid fa-power-off mr-2"></i> Launch Automation
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
+
             <!-- VIEW: RESULTS -->
-            <div id="view-results" class="view-section hidden space-y-6 animate-slide-up">
+            <div id="view-results" class="view-section hidden space-y-6">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                    <div>
-                        <h2 class="text-3xl font-bold text-gray-800">Candidate Pool</h2>
-                        <p class="text-sm text-gray-500 mt-1">Real-time status of your outreach efforts.</p>
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-12 h-12 bg-scooter-green/10 rounded-2xl flex items-center justify-center text-scooter-green">
+                            <i class="fa-solid fa-address-card text-2xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-3xl font-bold text-gray-800">Candidate Pool</h2>
+                            <p class="text-sm text-gray-500 mt-1">Real-time status of your outreach efforts.</p>
+                        </div>
                     </div>
 
                     <div
@@ -806,6 +1029,16 @@
                             <select id="filter-role" onchange="filterResults()"
                                 class="bg-transparent border-none text-[11px] font-bold text-gray-600 outline-none cursor-pointer">
                                 <option value="all">All Roles</option>
+                            </select>
+                        </div>
+                        <div class="px-3 py-1 bg-gray-50 rounded-lg flex items-center gap-2 border border-gray-100">
+                            <i class="fa-solid fa-database text-gray-400 text-[10px]"></i>
+                            <select id="filter-source" onchange="filterResults()"
+                                class="bg-transparent border-none text-[11px] font-bold text-gray-600 outline-none cursor-pointer">
+                                <option value="all">All Sources</option>
+                                <option value="LinkedIn">LinkedIn</option>
+                                <option value="Apollo">Apollo</option>
+                                <option value="Clay">Clay</option>
                             </select>
                         </div>
                         <div class="px-3 py-1 bg-gray-50 rounded-lg flex items-center gap-2 border border-gray-100">
@@ -872,45 +1105,54 @@
                     </div>
                     <div>
                         <div class="text-xs font-bold uppercase tracking-wider mb-0.5">Safety Limit Alert</div>
-                        <div class="text-xs opacity-80">You've reached your safe daily limit (10 actions). Automation is
+                        <div class="text-xs opacity-80">You've reached your safe daily limit (10 actions).
+                            Automation is
                             paused to protect your account.</div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-3xl card-shadow border border-white overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
+                <div
+                    class="bg-white rounded-3xl card-shadow border border-white overflow-hidden flex flex-col h-[70vh]">
+                    <div class="overflow-auto flex-1 custom-scrollbar">
+                        <table class="w-full text-left border-collapse table-fixed">
                             <thead>
                                 <tr class="bg-gray-50/50 border-b border-gray-100">
-                                    <th class="p-4 bg-gray-50/50 w-10">
+                                    <th class="p-4 bg-gray-50/50 w-[3%]">
                                         <input type="checkbox" id="select-all-candidates"
                                             onchange="toggleAllSelection()"
                                             class="w-4 h-4 rounded border-gray-300 text-scooter-green focus:ring-scooter-green">
                                     </th>
                                     <th
-                                        class="p-4 text-xs font-black text-scooter-green uppercase tracking-widest w-1/4 bg-green-50/50">
+                                        class="p-4 text-[10px] font-black text-scooter-green uppercase tracking-widest w-[15%] bg-green-50/50">
                                         Candidate</th>
                                     <th
-                                        class="p-4 text-xs font-black text-scooter-orange uppercase tracking-widest w-1/4 bg-orange-50/50">
-                                        Context</th>
+                                        class="p-4 text-[10px] font-black text-scooter-orange uppercase tracking-widest w-[8%] bg-orange-50/50">
+                                        Source</th>
                                     <th
-                                        class="p-4 text-xs font-black text-blue-600 uppercase tracking-widest w-1/4 bg-blue-50/50">
-                                        Experience & Skills</th>
+                                        class="p-4 text-[10px] font-black text-blue-600 uppercase tracking-widest w-[12%] bg-blue-50/50">
+                                        LinkedIn URL</th>
                                     <th
-                                        class="p-4 text-xs font-black text-purple-600 uppercase tracking-widest w-1/4 bg-purple-50/50">
-                                        Company Intelligence</th>
+                                        class="p-4 text-[10px] font-black text-gray-600 uppercase tracking-widest w-[13%] bg-gray-50/50 font-bold">
+                                        Context & Role</th>
                                     <th
-                                        class="p-4 text-xs font-black text-gray-500 uppercase tracking-widest text-right bg-gray-50/50">
-                                        Actions</th>
+                                        class="p-4 text-[10px] font-black text-scooter-green uppercase tracking-widest w-[12%] bg-green-50/50">
+                                        Location</th>
                                     <th
-                                        class="p-4 text-xs font-black text-gray-500 uppercase tracking-widest text-right bg-gray-50/50">
+                                        class="p-4 text-[10px] font-black text-purple-600 uppercase tracking-widest w-[16%] bg-purple-50/50">
+                                        Experience</th>
+                                    <th
+                                        class="p-4 text-[10px] font-black text-gray-500 uppercase tracking-widest w-[12%] bg-gray-50/50 text-center">
                                         Status</th>
+                                    <th
+                                        class="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-[9%] text-right bg-gray-50/50">
+                                        Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="results-table-body" class="text-sm text-gray-600 divide-y divide-gray-50">
                                 <!-- Data injected here -->
                                 <tr>
-                                    <td colspan="7" class="p-10 text-center text-gray-400 italic">No data loaded yet.
+                                    <td colspan="7" class="p-10 text-center text-gray-400 italic">No data loaded
+                                        yet.
                                     </td>
                                 </tr>
                             </tbody>
@@ -919,1077 +1161,774 @@
                 </div>
             </div>
 
-        </div>
-
-        <!-- Terminal Log Panel (Floating) -->
-        <div
-            class="absolute bottom-6 right-6 w-96 bg-gray-900/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-800 overflow-hidden flex flex-col transition-all transform translate-y-[85%] hover:translate-y-0 group z-50">
-            <div class="h-10 bg-gray-800/50 flex items-center justify-between px-4 cursor-pointer">
-                <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                    <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
-                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                    <span class="text-xs font-mono text-gray-400 ml-2">Terminal Output</span>
-                </div>
-                <i class="fa-solid fa-chevron-up text-gray-500 text-xs group-hover:rotate-180 transition-transform"></i>
-            </div>
-            <div id="logs" class="h-64 log-box p-4 overflow-y-auto text-green-400 space-y-1 text-xs">
-                <div class="opacity-50 text-gray-500">System initialized. Waiting for commands...</div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Logic -->
-    <script>
-        // State
-        let currentTab = 'harvest';
-        let eventSource = null;
-        let rolesData = [];
-
-        // UI Switcher
-        function switchTab(tab) {
-            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`view-${tab}`).classList.remove('hidden');
-
-            document.querySelectorAll('nav button').forEach(el => {
-                el.classList.remove('nav-active');
-                el.classList.add('hover:bg-green-50/50', 'text-gray-600');
-            });
-
-            const activeBtn = document.getElementById(`tab-${tab}`);
-            activeBtn.classList.add('nav-active');
-            activeBtn.classList.remove('text-gray-600', 'hover:bg-green-50/50');
-
-            if (tab === 'results') loadResults();
-            if (tab === 'queue') loadQueue();
-        }
-
-        // --- ROLES LOGIC ---
-        async function loadRoleSelector() {
-            try {
-                const res = await fetch('/api/roles');
-                rolesData = await res.json();
-
-                const select = document.getElementById('role-select');
-                select.innerHTML = '<option value="">-- Choose a Role --</option>';
-
-                rolesData.forEach((role, idx) => {
-                    // Only show roles that have a company name mentioned
-                    if (!role.company_name || role.company_name.trim() === "") return;
-
-                    const opt = document.createElement('option');
-                    opt.value = idx;
-                    // Format: RoleName(CompanyName)
-                    opt.textContent = `${role.name} (${role.company_name})`;
-                    select.appendChild(opt);
-                });
-            } catch (e) { console.error(e); }
-        }
-
-        async function loadRoleData() {
-            const idx = document.getElementById('role-select').value;
-            const panel = document.getElementById('harvest-panel');
-
-            if (idx === "") {
-                panel.classList.add('opacity-50', 'pointer-events-none');
-                document.getElementById('hv-url').value = '';
-                document.getElementById('hv-company').value = '';
-                document.getElementById('hv-link').value = '';
-                document.getElementById('hv-location').value = '';
-                document.getElementById('hv-compensation').value = '';
-                return;
-            }
-
-            const role = rolesData[idx];
-            document.getElementById('hv-url').value = role.search_url || "";
-            document.getElementById('hv-company').value = role.company_name || "";
-            document.getElementById('hv-link').value = role.application_link || "";
-            document.getElementById('hv-location').value = role.location || "";
-            document.getElementById('hv-compensation').value = role.compensation || "";
-
-            panel.classList.remove('opacity-50', 'pointer-events-none');
-
-            // Auto-Resume: Check saved state
-            try {
-                const res = await fetch('/api/harvest_state');
-                const state = await res.json();
-                const key = `${role.name}|${role.company_name}`;
-                if (state[key]) {
-                    const nextLimit = state[key] + 1;
-                    document.getElementById('hv-start').value = nextLimit;
-
-                    // Simple Toast
-                    const oldText = document.querySelector('h2').innerText;
-                    document.querySelector('h2').innerText = `Resume: Page ${nextLimit}`;
-                    setTimeout(() => document.querySelector('h2').innerText = 'Harvest Candidates', 2000);
-                } else {
-                    document.getElementById('hv-start').value = 1;
-                }
-            } catch (e) {
-                console.error("Error loading harvest state", e);
-            }
-        }
-
-        async function saveNewRole() {
-            const name = document.getElementById('new-role-name').value;
-            const jid = document.getElementById('new-role-id').value;
-            const company = document.getElementById('new-hiring-company').value;
-            const link = document.getElementById('new-app-link').value;
-            const loc = document.getElementById('new-location').value;
-            const comp = document.getElementById('new-compensation').value;
-            const url = document.getElementById('new-role-url').value;
-
-            if (!name) return alert("Role Name is required");
-
-            await fetch('/api/roles', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name,
-                    job_id: jid,
-                    search_url: url,
-                    company_name: company,
-                    application_link: link,
-                    location: loc,
-                    compensation: comp
-                })
-            });
-
-            document.getElementById('role-modal').classList.add('hidden');
-            loadRoleSelector();
-        }
-
-
-        // Logger Connection
-        function connectLogs() {
-            if (eventSource && eventSource.readyState !== 2) return; // 2 is CLOSED
-            if (eventSource) eventSource.close();
-
-            eventSource = new EventSource('/api/logs');
-            eventSource.onmessage = function (event) {
-                const logs = document.getElementById('logs');
-                const div = document.createElement('div');
-                div.textContent = `> ${event.data}`;
-                logs.appendChild(div);
-                logs.scrollTop = logs.scrollHeight;
-
-                // Auto-expand logs if it's currently minimized
-                const terminal = document.querySelector('.absolute.bottom-6');
-                if (terminal && terminal.classList.contains('translate-y-[85%]')) {
-                    terminal.classList.remove('translate-y-[85%]');
-                    terminal.classList.add('translate-y-0');
-                }
-            };
-        }
-
-        async function startHarvest() {
-            const getVal = (id) => document.getElementById(id)?.value || "";
-
-            const handle = getVal('handle-input');
-            const url = getVal('hv-url');
-            const company = getVal('hv-company');
-            const link = getVal('hv-link');
-            const loc = getVal('hv-location');
-            const comp = getVal('hv-compensation');
-
-            // Automated Pagination
-            const start = 1;
-            const pages = 1;
-
-            // Get simple role name from selection logic
-            const idx = document.getElementById('role-select').value;
-            let roleName = "", jobid = "";
-            if (idx !== "") {
-                roleName = rolesData[idx].name;
-                jobid = rolesData[idx].job_id || "";
-            }
-
-            if (!url) return alert('Enter a URL!');
-            if (!company) return alert('Enter Hiring Company (Client Name)');
-
-            setStatus('Running...', 'bg-scooter-orange');
-
-            const query = new URLSearchParams({
-                handle,
-                search_url: url,
-                job_id: jobid,
-                role_name: roleName,
-                company_name: company,
-                app_link: link,
-                location: loc, // New
-                compensation: comp, // New
-                start_page: start,
-                pages
-            });
-
-            await fetch(`/api/harvest?${query.toString()}`, { method: 'POST' });
-
-            // Show terminal
-            const terminal = document.querySelector('.absolute.bottom-6');
-            if (terminal) {
-                terminal.classList.remove('translate-y-[85%]');
-                terminal.classList.add('translate-y-0');
-            }
-
-            connectLogs();
-            // Force immediate usage update
-            setTimeout(loadUsage, 1000);
-            setTimeout(loadUsage, 3000);
-        }
-
-        async function startApolloHarvest() {
-            const handle = document.getElementById('handle-input').value;
-            const url = document.getElementById('apollo-url').value;
-            const limit = document.getElementById('apollo-limit').value;
-            const pages = document.getElementById('apollo-pages').value;
-
-            if (!url) return alert('Enter an Apollo Search URL!');
-
-            setStatus('Sourcing...', 'bg-scooter-apollo');
-
-            const query = new URLSearchParams({
-                handle,
-                search_url: url,
-                limit,
-                pages
-            });
-
-            await fetch(`/api/apollo_harvest?${query.toString()}`, { method: 'POST' });
-
-            // Show terminal
-            const terminal = document.querySelector('.absolute.bottom-6');
-            if (terminal) {
-                terminal.classList.remove('translate-y-[85%]');
-                terminal.classList.add('translate-y-0');
-            }
-
-            connectLogs();
-        }
-
-        async function startCampaign() {
-            const handle = document.getElementById('handle-input').value;
-            setStatus('Bot Active', 'bg-scooter-green');
-            await fetch(`/api/campaign?handle=${handle}`, { method: 'POST' });
-
-            // Show terminal
-            const terminal = document.querySelector('.absolute.bottom-6');
-            if (terminal) {
-                terminal.classList.remove('translate-y-[85%]');
-                terminal.classList.add('translate-y-0');
-            }
-
-            connectLogs();
-            // Force immediate usage update
-            setTimeout(loadUsage, 1000);
-            setTimeout(loadUsage, 3000);
-        }
-
-        async function stopBot() {
-            await fetch('/api/stop', { method: 'POST' });
-            setStatus('Stopping...', 'bg-red-500');
-            setTimeout(() => setStatus('System Idle', 'bg-gray-300'), 3000);
-        }
-
-        function setStatus(text, colorClass) {
-            document.getElementById('status-text').textContent = text;
-            const dot = document.getElementById('status-dot');
-            dot.className = `w-2.5 h-2.5 rounded-full ${colorClass}`;
-        }
-
-        // --- QUEUE LOGIC ---
-        let queueData = [];
-
-        async function loadQueue() {
-            const handle = document.getElementById('handle-input').value;
-            const res = await fetch(`/api/queue?handle=${handle || ''}`);
-            queueData = await res.json();
-            renderQueue();
-
-            const badge = document.getElementById('queue-badge');
-            if (queueData.length > 0) {
-                badge.textContent = queueData.length;
-                badge.classList.remove('hidden');
-            } else {
-                badge.classList.add('hidden');
-            }
-        }
-
-        function renderQueue() {
-            const tbody = document.getElementById('queue-table-body');
-            tbody.innerHTML = '';
-
-            // Calculate stats
-            const limitInput = document.getElementById('daily-limit');
-            const limit = limitInput ? (parseInt(limitInput.value) || 10) : 10;
-            const remaining = Math.max(0, queueData.length - limit);
-
-            const roles = {};
-            queueData.forEach(r => {
-                const tag = r.role_name || 'Generic';
-                roles[tag] = (roles[tag] || 0) + 1;
-            });
-            const roleTags = Object.entries(roles).map(([k, v]) =>
-                `<span class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mr-2 border border-gray-200">${k}: ${v}</span>`
-            ).join('');
-
-            const countDiv = document.getElementById('queue-count');
-            if (countDiv) {
-                countDiv.innerHTML = `
-                    <div class="flex flex-col gap-1.5 w-full">
-                        <div class="flex items-center justify-between w-full">
-                             <div class="flex items-center gap-3">
-                                 <span class="font-bold text-gray-700">${queueData.length} Total</span>
-                                 <span class="text-xs text-gray-400">|</span>
-                                 <span class="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded text-xs">Processing: ${Math.min(queueData.length, limit)}</span>
-                                 ${remaining > 0 ? `<span class="text-orange-400 font-bold bg-orange-50 px-2 py-0.5 rounded text-xs">Queued for later: ${remaining}</span>` : ''}
-                             </div>
-                             <button onclick="clearQueue()" class="text-red-400 hover:text-red-600 font-bold text-xs uppercase tracking-wider">Clear All</button>
-                        </div>
-                        <div class="flex flex-wrap gap-y-1 items-center"><span class="text-[10px] text-gray-400 mr-2 uppercase font-bold">Breakdown:</span>${roleTags}</div>
+            <!-- VIEW: HEALTH -->
+            <div id="view-health" class="view-section hidden max-w-5xl mx-auto space-y-6">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-800">Account Health & Safety</h2>
+                        <p class="text-sm text-gray-500 mt-1">Monitor real-time stealth metrics and security
+                            status.
+                        </p>
                     </div>
-                `;
+                    <button onclick="loadHealthReport()"
+                        class="bg-white hover:bg-gray-50 text-scooter-charcoal border border-gray-200 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm flex items-center">
+                        <i class="fa-solid fa-rotate mr-2 text-scooter-green"></i> Refresh Stats
+                    </button>
+                </div>
+
+                <div id="health-report-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="col-span-full py-20 text-center text-gray-400">
+                        <i class="fas fa-spinner fa-spin mr-2"></i> Loading Health Data...
+                    </div>
+                </div>
+
+
+
+                <!-- Notification Permission Request (Toast) -->
+                <div id="notif-request"
+                    class="hidden absolute top-10 left-1/2 -translate-x-1/2 bg-white text-gray-900 px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-4 z-[100] border border-gray-100 backdrop-blur-xl">
+                    <div class="bg-scooter-green/20 p-2 rounded-xl text-scooter-green">
+                        <i class="fa-solid fa-bell-on text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm text-gray-900">Enable Desktop Alerts?</p>
+                        <p class="text-[10px] text-gray-900">Get notified instantly if the bot hits a CAPTCHA or
+                            finishes.</p>
+                    </div>
+                    <div class="flex gap-2 ml-4">
+                        <button onclick="dismissNotifRequest()"
+                            class="px-4 py-2 text-xs font-bold text-gray-400 hover:bg-gray-100 rounded-xl transition-all">Later</button>
+                        <button onclick="requestNotifPermission()"
+                            class="bg-scooter-green text-white px-5 py-2 text-xs font-bold rounded-xl hover:scale-105 transition-all shadow-md shadow-scooter-green/20">Enable</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Floating Logs Terminal -->
+        <div id="terminal-container"
+            class="fixed bottom-6 right-6 w-[400px] h-10 bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 transition-all duration-500 overflow-hidden z-40 group hover:h-64 translate-y-0">
+            <div class="h-10 px-4 flex items-center justify-between border-b border-white/5 cursor-pointer"
+                onclick="document.getElementById('terminal-container').classList.toggle('h-64')">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-scooter-green animate-pulse"></span>
+                    <span class="text-[10px] font-black text-white uppercase tracking-widest">Live Activity Log</span>
+                </div>
+                <i class="fa-solid fa-terminal text-gray-500 text-xs"></i>
+            </div>
+            <div id="logs"
+                class="p-4 h-[calc(100%-40px)] overflow-y-auto font-mono text-green-400 space-y-1 text-[10px] custom-scrollbar selection:bg-green-400/20">
+                <div class="opacity-50 italic">> system initialized... ready for commands.</div>
+            </div>
+        </div>
+
+        <script>
+            // --- GLOBAL STATE ---
+            let rolesData = [];
+            let queueData = [];
+            let allPoolData = [];
+            let eventSource = null;
+            let autoCheckInterval = null;
+
+            // --- UTILS & UI HELPERS ---
+            function switchTab(tab) {
+                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+                const targetView = document.getElementById(`view-${tab}`);
+                if (targetView) targetView.classList.remove('hidden');
+
+                document.querySelectorAll('nav button').forEach(el => el.classList.remove('nav-active'));
+                const activeBtn = document.getElementById(`tab-${tab}`);
+                if (activeBtn) activeBtn.classList.add('nav-active');
+
+                if (tab === 'results') loadResults();
+                if (tab === 'queue') loadQueue();
+                if (tab === 'health') loadHealthReport();
+                if (tab === 'harvest') loadRoleSelector();
             }
 
-            if (queueData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="p-10 text-center text-gray-400 italic">No candidates in queue. Harvest some first!</td></tr>';
-                return;
+            function setStatus(text, colorClass) {
+                const statusText = document.getElementById('status-text');
+                const dot = document.getElementById('status-dot');
+                if (statusText) statusText.textContent = text;
+                if (dot) dot.className = `w-2.5 h-2.5 rounded-full ${colorClass}`;
             }
 
-            queueData.forEach((row, idx) => {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-gray-50 transition-colors group border-b border-gray-50 last:border-0';
+            function flashTitle(msg) {
+                const old = document.title;
+                document.title = msg;
+                setTimeout(() => document.title = old, 3000);
+            }
 
-                // Status Logic
-                let statusIcon = '';
-                const s = (row.status || '').toLowerCase();
-                const isEnriched = s === 'enriched' || s === 'completed' || s === 'connected';
-                const isFailed = s === 'failed';
-
-                if (isEnriched) {
-                    statusIcon = `<span class="text-green-600 bg-green-100 rounded-lg w-6 h-6 flex items-center justify-center text-xs shadow-sm" title="Done: ${s}"><i class="fa-solid fa-check"></i></span>`;
-                    tr.classList.add('bg-green-50/40');
-                } else if (isFailed) {
-                    statusIcon = `<span class="text-red-500 bg-red-100 rounded-lg w-6 h-6 flex items-center justify-center text-xs" title="Failed"><i class="fa-solid fa-xmark"></i></span>`;
-                } else {
-                    statusIcon = `<span class="text-gray-300 bg-gray-100 rounded-lg w-6 h-6 flex items-center justify-center text-xs group-hover:bg-white group-hover:shadow-sm transition-all"><i class="fa-regular fa-clock"></i></span>`;
+            function showDesktopNotification(title, body) {
+                if (Notification.permission === 'granted') {
+                    new Notification(title, { body, icon: '/static/logo.png' });
                 }
-
-                // Dim rows that are beyond the limit (unless done)
-                if (idx >= limit && !isEnriched && !isFailed) {
-                    tr.classList.add('opacity-40', 'grayscale');
-                }
-
-                const companyText = row.current_company ? `<span class="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 ml-2 truncate max-w-[150px] inline-block align-middle" title="${row.current_company}"><i class="fa-regular fa-building mr-1"></i>${row.current_company}</span>` : '';
-
-                tr.innerHTML = `
-                    <td class="p-4 w-10">
-                        <input type="checkbox" name="queue-select" value="${row.url}" onchange="updateQueueSelectionUI()" class="w-4 h-4 rounded border-gray-300 text-scooter-green focus:ring-scooter-green cursor-pointer">
-                    </td>
-                    <td class="p-3 w-24">
-                        <div class="flex items-center gap-3">
-                            <button onclick="deleteQueueItem(${idx})" class="text-gray-300 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
-                            ${statusIcon}
-                        </div>
-                    </td>
-                    <td class="p-3">
-                        <div class="flex flex-col justify-center h-full">
-                            <div class="flex items-center gap-2">
-                                <a href="${row.url}" target="_blank" class="hover:underline text-blue-600 font-bold text-xs truncate max-w-[200px]" title="${row.url}">
-                                     ${row.url.split('/in/')[1]?.replace(/\/$/, '') || 'View Profile'}
-                                </a>
-                                ${companyText}
-                                ${idx >= limit && !isEnriched ? '<span class="text-[9px] text-orange-500 bg-orange-100 px-1.5 rounded font-bold uppercase tracking-wider">Queue</span>' : ''}
-                            </div>
-                            ${row.email ? `<div class="text-[10px] text-gray-500 mt-1 font-mono flex items-center"><i class="fa-solid fa-envelope text-blue-400 mr-1.5"></i>${row.email}</div>` : ''}
-                        </div>
-                    </td>
-                    <td class="p-3 text-gray-500 font-medium text-xs">
-                        <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded-md border border-gray-200">
-                           ${row.role_name || 'Generic'}
-                        </span>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function deleteQueueItem(idx) {
-            queueData.splice(idx, 1);
-            renderQueue();
-            updateQueueSelectionUI();
-        }
-
-        function toggleQueueSelection() {
-            const master = document.getElementById('select-all-queue');
-            const checkboxes = document.getElementsByName('queue-select');
-            checkboxes.forEach(cb => cb.checked = master.checked);
-            updateQueueSelectionUI();
-        }
-
-        function updateQueueSelectionUI() {
-            const checkboxes = document.getElementsByName('queue-select');
-            const selected = Array.from(checkboxes).filter(cb => cb.checked);
-            const toolbar = document.getElementById('queue-selection-toolbar');
-            const count = document.getElementById('queue-selection-count');
-
-            if (selected.length > 0) {
-                toolbar.classList.remove('hidden');
-                count.innerText = selected.length;
-            } else {
-                toolbar.classList.add('hidden');
-                const master = document.getElementById('select-all-queue');
-                if (master) master.checked = false;
-            }
-        }
-
-        function clearQueue() {
-            if (!confirm("Delete ALL candidates from the queue?")) return;
-            queueData = [];
-            renderQueue();
-            const master = document.getElementById('select-all-queue');
-            if (master) master.checked = false;
-            updateQueueSelectionUI();
-        }
-
-        async function saveQueue(silent = false) {
-            await fetch('/api/queue', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(queueData)
-            });
-            if (!silent) {
-                alert('Queue Saved!');
-                loadQueue();
-            }
-        }
-
-        let lastEnrichCount = null;
-        let lastHarvestCount = null;
-
-        async function loadUsage() {
-            const handleInput = document.getElementById('handle-input');
-            const handle = handleInput ? handleInput.value : '';
-            if (!handle || handle === "undefined") return;
-
-            try {
-                // Add timestamp to skip cache
-                const res = await fetch(`/api/usage?handle=${encodeURIComponent(handle)}&t=${Date.now()}`);
-                const usage = await res.json();
-
-                // Update Sidebar
-                const eText = document.getElementById('enrich-usage-text');
-                const eBar = document.getElementById('enrich-usage-bar');
-                if (eText && eBar) {
-                    if (lastEnrichCount !== null && lastEnrichCount < usage.count) {
-                        eText.classList.add('text-scooter-orange', 'scale-125');
-                        setTimeout(() => eText.classList.remove('text-scooter-orange', 'scale-125'), 2000);
-                    }
-                    lastEnrichCount = usage.count;
-
-                    const pct = Math.min(100, (usage.count / usage.limit) * 100);
-                    eText.innerText = `${usage.count}/${usage.limit}`;
-                    eBar.style.width = `${pct}%`;
-                    if (usage.count >= usage.limit) {
-                        eText.classList.remove('text-scooter-green');
-                        eText.classList.add('text-red-500');
-                        eBar.classList.remove('bg-scooter-green');
-                        eBar.classList.add('bg-red-500');
-                    }
-                }
-
-                const hText = document.getElementById('harvest-usage-text');
-                const hBar = document.getElementById('harvest-usage-bar');
-                if (hText && hBar) {
-                    if (lastHarvestCount !== null && lastHarvestCount < usage.harvest_pages) {
-                        hText.classList.add('text-scooter-green', 'scale-125');
-                        setTimeout(() => hText.classList.remove('text-scooter-green', 'scale-125'), 2000);
-                    }
-                    lastHarvestCount = usage.harvest_pages;
-
-                    const pct = Math.min(100, (usage.harvest_pages / usage.harvest_limit) * 100);
-                    hText.innerText = `${usage.harvest_pages}/${usage.harvest_limit}`;
-                    hBar.style.width = `${pct}%`;
-                }
-
-                const syncTxt = document.getElementById('last-usage-sync');
-                if (syncTxt) syncTxt.innerText = `Synced: ${new Date().toLocaleTimeString()}`;
-
-                // Update Badge in Harvest view
-                const badge = document.getElementById('harvest-usage-badge');
-                if (badge) {
-                    badge.innerHTML = `Daily Usage: ${usage.count}/${usage.limit}`;
-                    badge.classList.remove('hidden');
-                    if (usage.count >= usage.limit) {
-                        badge.classList.remove('bg-yellow-50', 'text-yellow-600', 'border-yellow-100');
-                        badge.classList.add('bg-red-50', 'text-red-600', 'border-red-100');
-                    }
-                }
-
-                // Update Warning in Results view
-                const warning = document.getElementById('limit-warning');
-                if (warning) {
-                    if (usage.count >= usage.limit) {
-                        warning.classList.remove('hidden');
-                        warning.querySelector('.opacity-80').innerText = `You've reached your safe daily limit (${usage.limit} enriched profiles). Automation is paused to protect your account.`;
-                    } else {
-                        warning.classList.add('hidden');
-                    }
-                }
-            } catch (e) {
-                console.error("Failed to load usage:", e);
-            }
-        }
-
-        // Initialize usage on load and refresh periodically
-        window.addEventListener('DOMContentLoaded', () => {
-            loadUsage();
-            setInterval(loadUsage, 5000); // More frequent updates (5s) for better feedback
-        });
-
-        async function launchCampaignAction() {
-            const handle = document.getElementById('handle-input').value;
-            if (!handle) { alert("Please enter a LinkedIn Handle"); return; }
-
-            const enrichOnly = document.getElementById('enrich-only').checked;
-            const limit = document.getElementById('daily-limit').value || 10;
-
-            const checkboxes = document.getElementsByName('queue-select');
-            const selectedUrls = Array.from(checkboxes)
-                .filter(cb => cb.checked)
-                .map(cb => cb.value);
-
-            if (queueData.length === 0) {
-                alert("Queue is empty! Harvest some candidates first.");
-                return;
             }
 
-            let urlsToProcess = null;
-            if (selectedUrls.length > 0) {
-                urlsToProcess = selectedUrls;
-                if (!confirm(`Launch campaign for ${selectedUrls.length} selected candidates?`)) return;
-            } else {
-                if (!confirm(`Launch campaign for ALL ${queueData.length} candidates in queue?`)) return;
-            }
-
-            // Save first (silent)
-            await saveQueue(true);
-
-            // Start Campaign
-            try {
-                // Visual feedback
-                const btn = document.querySelector('button[onclick="launchCampaignAction()"]');
-                if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
-
-                const body = {
-                    handle: handle,
-                    enrich_only: enrichOnly,
-                    limit: urlsToProcess ? urlsToProcess.length : limit
-                };
-                if (urlsToProcess) body.urls = urlsToProcess;
-
-                const res = await fetch(`/api/campaign`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
+            function requestNotifPermission() {
+                Notification.requestPermission().then(perm => {
+                    if (perm === 'granted') dismissNotifRequest();
                 });
-                const json = await res.json();
-
-                // Check usage after attempt
-                loadUsage();
-                setTimeout(loadUsage, 3000);
-
-                if (json.status === 'started') {
-                    alert(`Campaign Started! Limit: ${limit} actions.\nCheck the Terminal Logs below.`);
-                    // Auto-show logs
-                    const terminal = document.querySelector('.absolute.bottom-6');
-                    terminal.classList.remove('translate-y-[85%]');
-                } else {
-                    alert(`Error: ${json.message}`);
-                }
-
-                if (btn) btn.innerHTML = '<i class="fa-solid fa-rocket mr-2"></i> Launch';
-            } catch (e) {
-                alert("Failed to start campaign: " + e);
-            }
-        }
-
-
-        let allPoolData = [];
-
-        async function loadResults() {
-            const handle = document.getElementById('handle-input').value;
-            const tbody = document.getElementById('results-table-body');
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-20 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i>Loading Enriched Pool...</td></tr>';
-
-            try {
-                const res = await fetch(`/api/results?handle=${handle}&refresh=true`);
-                const json = await res.json();
-                allPoolData = json.data || [];
-
-                // Populate Role Filter
-                const roleSelect = document.getElementById('filter-role');
-                const roles = [...new Set(allPoolData.map(r => r.Role))].filter(Boolean);
-                roleSelect.innerHTML = '<option value="all">All Roles</option>' +
-                    roles.map(r => `<option value="${r}">${r}</option>`).join('');
-
-                renderResultsTable(allPoolData);
-            } catch (e) {
-                console.error(e);
-                tbody.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500">Error loading data.</td></tr>';
-            }
-        }
-
-        function filterResults() {
-            const role = document.getElementById('filter-role').value;
-            const status = document.getElementById('filter-status').value;
-
-            const filtered = allPoolData.filter(row => {
-                const roleMatch = role === 'all' || row.Role === role;
-                const statusMatch = status === 'all' || row.Status === status;
-                return roleMatch && statusMatch;
-            });
-
-            renderResultsTable(filtered);
-        }
-
-        async function checkRepliesNow() {
-            const handle = document.getElementById('handle-input').value;
-            if (!handle) {
-                alert("Please enter a LinkedIn Handle");
-                return;
             }
 
-            const btn = event.target;
-            const originalHTML = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
-            btn.disabled = true;
-
-            try {
-                const res = await fetch(`/api/check_replies?handle=${encodeURIComponent(handle)}`, { method: 'POST' });
-                const json = await res.json();
-
-                if (json.status === 'started') {
-                    alert('Reply check started! Watch the Terminal Logs below for progress.');
-                    const terminal = document.querySelector('.absolute.bottom-6');
-                    if (terminal) terminal.classList.remove('translate-y-[85%]');
-                    setTimeout(() => loadResults(), 30000);
-                } else {
-                    alert(`Error: ${json.message}`);
-                }
-            } catch (e) {
-                alert("Failed to start reply check: " + e);
-            } finally {
-                btn.innerHTML = originalHTML;
-                btn.disabled = false;
-            }
-        }
-
-        // Auto-check state
-        let autoCheckInterval = null;
-        let autoCheckCountdown = null;
-        let autoCheckEnabled = false;
-        let nextCheckTime = null;
-        const AUTO_CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
-
-        function updateCountdown() {
-            if (!autoCheckEnabled || !nextCheckTime) return;
-
-            const now = Date.now();
-            const remaining = nextCheckTime - now;
-
-            if (remaining <= 0) return;
-
-            const minutes = Math.floor(remaining / 60000);
-            const seconds = Math.floor((remaining % 60000) / 1000);
-            const btn = document.getElementById('auto-check-toggle');
-            btn.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> NEXT CHECK: ${minutes}m ${seconds}s`;
-        }
-
-        function toggleAutoCheck() {
-            const btn = document.getElementById('auto-check-toggle');
-
-            if (autoCheckEnabled) {
-                // Turn OFF
-                autoCheckEnabled = false;
-                nextCheckTime = null;
-                if (autoCheckInterval) {
-                    clearInterval(autoCheckInterval);
-                    autoCheckInterval = null;
-                }
-                if (autoCheckCountdown) {
-                    clearInterval(autoCheckCountdown);
-                    autoCheckCountdown = null;
-                }
-                btn.innerHTML = '<i class="fa-solid fa-clock"></i> AUTO-CHECK: OFF';
-                btn.classList.remove('bg-green-600', 'hover:bg-green-700');
-                btn.classList.add('bg-gray-600', 'hover:bg-gray-700');
-                console.log('Auto-check disabled');
-            } else {
-                // Turn ON
-                autoCheckEnabled = true;
-                btn.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> AUTO-CHECK: ON';
-                btn.classList.remove('bg-gray-600', 'hover:bg-gray-700');
-                btn.classList.add('bg-green-600', 'hover:bg-green-700');
-
-                // Run immediately
-                checkRepliesNow();
-
-                // Set next check time
-                nextCheckTime = Date.now() + AUTO_CHECK_INTERVAL_MS;
-
-                // Start countdown display
-                autoCheckCountdown = setInterval(updateCountdown, 1000);
-
-                // Then run every 30 minutes
-                autoCheckInterval = setInterval(() => {
-                    console.log('Auto-check triggered (30min interval)');
-                    nextCheckTime = Date.now() + AUTO_CHECK_INTERVAL_MS;
-                    checkRepliesNow();
-                }, AUTO_CHECK_INTERVAL_MS);
-
-                console.log('Auto-check enabled - will run every 30 minutes');
-            }
-        }
-
-        function downloadFilteredResults() {
-            const role = document.getElementById('filter-role').value;
-            const status = document.getElementById('filter-status').value;
-
-            // 1. Apply Filters
-            const filtered = allPoolData.filter(row => {
-                const roleMatch = role === 'all' || row.Role === role;
-                const statusMatch = status === 'all' || row.Status === status;
-                return roleMatch && statusMatch;
-            });
-
-            if (filtered.length === 0) {
-                alert("No results to download for the selected filters.");
-                return;
+            function dismissNotifRequest() {
+                const el = document.getElementById('notif-request');
+                if (el) el.classList.add('hidden');
             }
 
-            // 2. Setup Headers
-            const baseHeaders = [
-                "Full Name", "Status", "Role", "URL", "Headline",
-                "Current Company", "Location", "Email", "Phone", "About", "Skills"
-            ];
-            const intelHeaders = [
-                "Company Intelligence (Industry)",
-                "Company Intelligence (Size)",
-                "Company Intelligence (HQ)",
-                "Company Intelligence (Website)",
-                "Full Company Intelligence Summary"
-            ];
+            // --- HEALTH CENTER ---
+            // --- HEALTH CENTER ---
+            async function loadHealthReport() {
+                const container = document.getElementById('health-report-container');
+                const alertBadge = document.getElementById('health-alert-badge');
+                if (!container) return;
 
-            const allHeaders = [...baseHeaders, ...intelHeaders];
+                try {
+                    const res = await fetch('/api/health_report');
+                    const data = await res.json();
+                    container.innerHTML = '';
 
-            // 3. Generate CSV String
-            const csvRows = [allHeaders.join(",")];
+                    let hasAlert = false;
+                    if (data && Array.isArray(data)) {
+                        data.forEach(acc => {
+                            if (acc.status === 'RESTRICTED') hasAlert = true;
+                            const metrics = acc.automation_metrics || {};
+                            const isHealthy = acc.status === 'HEALTHY';
+                            const isRestricted = acc.status === 'RESTRICTED';
 
-            filtered.forEach(item => {
-                // Get intelligence from the first experience item (current company)
-                const currentJob = (item.Experience && item.Experience.length > 0) ? item.Experience[0] : {};
+                            const statusColor = isHealthy ? 'text-green-600 bg-green-50' : (isRestricted ? 'text-red-700 bg-red-50' : 'text-orange-600 bg-orange-50');
+                            const statusDot = isHealthy ? 'bg-green-500' : (isRestricted ? 'bg-red-500' : 'bg-orange-500');
 
-                const intelValues = {
-                    "Company Intelligence (Industry)": currentJob.company_industry || "",
-                    "Company Intelligence (Size)": currentJob.company_size || "",
-                    "Company Intelligence (HQ)": currentJob.company_headquarters || "",
-                    "Company Intelligence (Website)": currentJob.company_website || "",
-                    "Full Company Intelligence Summary": currentJob.company_description || ""
-                };
-
-                const values = allHeaders.map(header => {
-                    let val = "";
-                    if (baseHeaders.includes(header)) {
-                        val = item[header] || "";
-                    } else {
-                        val = intelValues[header] || "";
-                    }
-                    // Basic escaping for CSV: double quotes around fields, escape existing double quotes
-                    const escaped = ('' + val).replace(/"/g, '""');
-                    return `"${escaped}"`;
-                });
-                csvRows.push(values.join(","));
-            });
-
-            const csvString = csvRows.join("\n");
-
-            // 4. Trigger Download
-            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-
-            const timestamp = new Date().toISOString().split('T')[0];
-            const filename = `OUTREACH_REPORT_${role.toUpperCase()}_${status.toUpperCase()}_${timestamp}.csv`;
-
-            link.setAttribute("href", url);
-            link.setAttribute("download", filename);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function renderResultsTable(data) {
-            const tbody = document.getElementById('results-table-body');
-            tbody.innerHTML = '';
-
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="p-20 text-center text-gray-400 italic">No candidates found matching filters.</td></tr>';
-                return;
-            }
-
-            data.forEach(row => {
-                let statusClass = 'bg-gray-50 text-gray-400 border-gray-100';
-                if (row['Status'] === 'COMPLETED') statusClass = 'bg-green-50 text-green-700 border-green-200';
-                else if (row['Status'] === 'CONNECTED') statusClass = 'bg-blue-50 text-blue-700 border-blue-200';
-                else if (row['Status'] === 'PENDING') statusClass = 'bg-yellow-50 text-yellow-700 border-yellow-200';
-                else if (row['Status'] === 'ENRICHED') statusClass = 'bg-scooter-orange/10 text-scooter-orange border-scooter-orange/20';
-                else if (row['Status'] === 'FAILED') statusClass = 'bg-red-50 text-red-700 border-red-200';
-                else if (row['Status'] === 'HARVESTED') statusClass = 'bg-gray-100 text-gray-500 border-gray-200';
-
-                tbody.innerHTML += `
-                <tr class="hover:bg-gray-50/50 transition-colors border-b border-gray-50 last:border-0 group">
-                    <td class="p-4 align-top w-10">
-                        <input type="checkbox" name="candidate-select" value="${row['URL']}" onchange="updateSelectionUI()" class="w-4 h-4 rounded border-gray-300 text-scooter-green focus:ring-scooter-green cursor-pointer">
-                    </td>
-                    <td class="p-4 align-top">
-                        <div class="flex items-start gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden border border-gray-200 shadow-sm shrink-0">
-                                ${row['Picture'] ?
-                        `<img src="${row['Picture']}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                     <span class="text-gray-400 font-bold text-lg hidden">${row['Full Name'].charAt(0)}</span>` :
-                        `<span class="text-gray-400 font-bold text-lg">${row['Full Name'].charAt(0)}</span>`
-                    }
-                            </div>
-                            <div class="min-w-0">
-                                <div class="font-bold text-gray-900 text-sm truncate mb-0.5">${row['Full Name']}</div>
-                                <div class="text-[10px] text-gray-500 leading-relaxed line-clamp-2" title="${row['Headline']}">${row['Headline'] || 'Pending...'}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="p-4 align-top">
-                        <div class="space-y-2">
-                             <div class="flex items-center gap-2 text-[10px] font-black text-scooter-orange bg-orange-50 px-2 py-1 rounded-lg border border-orange-100 w-fit uppercase tracking-widest">
-                                <i class="fa-solid fa-bullseye opacity-50"></i> ${row['Role'] || 'Generic'}
-                            </div>
-                            <div class="flex items-center gap-2 text-[10px] font-bold text-gray-700 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100 w-fit">
-                                <i class="fa-solid fa-briefcase text-gray-400"></i> ${row['Current Company'] || '-'}
-                            </div>
-                            <div class="flex items-center gap-2 text-[10px] text-gray-500 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100 w-fit font-medium">
-                                <i class="fa-solid fa-location-dot text-gray-400"></i> ${row['Location'] || '-'}
-                            </div>
-                        </div>
-                    </td>
-                    <td class="p-4 align-top">
-                        <div class="space-y-3">
-                            <div class="space-y-2">
-                                ${Array.isArray(row['Experience']) && row['Experience'].length > 0 ?
-                        row['Experience'].slice(0, 2).map((exp, idx) => `
-                                    <div class="relative ${idx > 0 ? 'pt-2 border-t border-gray-50' : ''}">
-                                        <div class="text-[10px] text-gray-900 font-bold leading-tight">${exp.title}</div>
-                                        <div class="flex items-center gap-2">
-                                            <div class="text-[9px] text-scooter-green font-medium">${exp.company}</div>
-                                            ${exp.company_industry || exp.company_description ? `
-                                                <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="text-[7px] font-black text-white bg-scooter-green px-1.5 py-0.5 rounded-full hover:bg-scooter-greenHover transition-colors ml-auto shadow-sm">
-                                                    INTEL <i class="fa-solid fa-chevron-down ml-0.5"></i>
-                                                </button>
-                                                <div class="hidden absolute left-0 right-0 z-50 mt-1 p-3 bg-white rounded-2xl shadow-2xl border border-gray-100 animate-in fade-in slide-in-from-top-2 duration-200" style="width: 250px;">
-                                                    <div class="space-y-3">
-                                                        <div class="grid grid-cols-2 gap-3">
-                                                            ${exp.company_industry ? `<div><span class="text-[7px] text-gray-400 block uppercase font-bold tracking-widest">Industry</span><span class="text-[9px] text-gray-700 block font-medium uppercase">${exp.company_industry}</span></div>` : ''}
-                                                            ${exp.company_size ? `<div><span class="text-[7px] text-gray-400 block uppercase font-bold tracking-widest">Size</span><span class="text-[9px] text-gray-700 block font-medium uppercase">${exp.company_size}</span></div>` : ''}
-                                                            ${exp.company_headquarters ? `<div class="col-span-2"><span class="text-[7px] text-gray-400 block uppercase font-bold tracking-widest">HQ</span><span class="text-[9px] text-gray-700 block font-medium uppercase">${exp.company_headquarters}</span></div>` : ''}
-                                                            ${exp.company_website ? `<div class="col-span-2"><span class="text-[7px] text-gray-400 block uppercase font-bold tracking-widest">Website</span><a href="${exp.company_website}" target="_blank" class="text-[9px] text-blue-500 block hover:underline truncate">${exp.company_website.replace('https://', '')}</a></div>` : ''}
-                                                        </div>
-                                                        ${exp.company_description ? `<div class="pt-2 border-t border-gray-100"><span class="text-[7px] text-gray-400 block uppercase font-bold tracking-widest mb-1.5">Intelligence About</span><p class="text-[9px] text-gray-600 italic leading-relaxed line-clamp-4">${exp.company_description}</p></div>` : ''}
-                                                    </div>
-                                                </div>
-                                            ` : ''}
+                            const card = document.createElement('div');
+                            card.className = "bg-white rounded-3xl p-6 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all";
+                            card.innerHTML = `
+                                    <div class="flex justify-between items-start mb-6">
+                                        <div class="max-w-[70%]">
+                                            <h3 class="font-bold text-gray-800 text-sm truncate">${acc.handle}</h3>
+                                            <p class="text-[10px] text-gray-400 font-medium uppercase tracking-tighter mt-0.5">Automated LinkedIn Account</p>
+                                        </div>
+                                        <div class="flex flex-col items-end">
+                                            <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${statusColor}">
+                                                <span class="w-1.5 h-1.5 rounded-full ${statusDot}"></span>
+                                                ${acc.status}
+                                            </span>
+                                            <div class="text-[10px] font-bold text-gray-400 mt-2">${metrics.success_rate || 0}% SUCCESS</div>
                                         </div>
                                     </div>
-                                    `).join('')
-                        : '<div class="text-[10px] text-gray-400 italic">No experience data</div>'}
-                            </div>
-                            <div class="flex flex-wrap gap-1 mt-1">
-                                ${row['Skills'] ?
-                        row['Skills'].split(',').slice(0, 4).map(s => `<span class="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-[4px] text-[8px] font-black border border-blue-100 uppercase tracking-tighter">${s.trim()}</span>`).join('')
-                        : ''
-                    }
-                            </div>
-                        </div>
-                    </td>
-                    <td class="p-4 align-top w-1/4">
-                        ${(() => {
-                        const cJob = (row.Experience && row.Experience.length > 0) ? row.Experience[0] : {};
-                        if (cJob.company_description) {
-                            return `
-                                    <div class="space-y-3">
-                                        <div class="grid grid-cols-2 gap-2">
-                                            ${cJob.company_industry ? `<div class="bg-purple-50 p-1 rounded-lg border border-purple-100"><span class="text-[7px] text-purple-400 block uppercase font-bold tracking-tight">Industry</span><span class="text-[9px] text-purple-700 block truncate font-medium">${cJob.company_industry}</span></div>` : ''}
-                                            ${cJob.company_size ? `<div class="bg-purple-50 p-1 rounded-lg border border-purple-100"><span class="text-[7px] text-purple-400 block uppercase font-bold tracking-tight">Size</span><span class="text-[9px] text-purple-700 block truncate font-medium">${cJob.company_size}</span></div>` : ''}
-                                        </div>
-                                        <div class="text-[10px] text-gray-600 italic leading-relaxed line-clamp-5 bg-gray-50/50 p-2.5 rounded-xl border border-gray-100">
-                                            ${cJob.company_description}
+                                    <div class="mb-6">
+                                        <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                            <div class="h-full ${isHealthy ? 'bg-green-500' : (isRestricted ? 'bg-red-500' : 'bg-orange-500')} transition-all duration-1000"
+                                                style="width: ${metrics.success_rate || 0}%"></div>
                                         </div>
                                     </div>
+                                    <div class="grid grid-cols-2 gap-3 mb-6">
+                                        <div class="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                                            <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Today's Cap</div>
+                                            <div class="flex items-end gap-1.5">
+                                                <span class="text-xl font-bold text-gray-800">${acc.daily_usage?.enrichment || 0}</span>
+                                                <span class="text-[10px] font-bold text-gray-400 pb-1">/ 25</span>
+                                            </div>
+                                        </div>
+                                        <div class="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                                            <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Challenges</div>
+                                            <div class="flex items-end gap-1.5">
+                                                <span class="text-xl font-bold ${metrics.captchas > 0 ? 'text-red-500' : 'text-gray-800'}">${metrics.captchas || 0}</span>
+                                                <span class="text-[10px] font-bold text-gray-400 pb-1 uppercase">CAPTCHA</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2 mb-2">
+                                        <div class="flex justify-between items-center text-[10px]">
+                                            <span class="font-bold text-gray-500">Security Restrictions</span>
+                                            <span class="font-black ${metrics.restricted > 0 ? 'text-red-600 bg-red-50 px-1.5 rounded' : 'text-gray-400'}">${metrics.restricted || 0}</span>
+                                        </div>
+                                        <div class="flex justify-between items-center text-[10px]">
+                                            <span class="font-bold text-gray-500">Network Timeouts</span>
+                                            <span class="font-black ${metrics.timeouts > 2 ? 'text-orange-600 bg-orange-50 px-1.5 rounded' : 'text-gray-400'}">${metrics.timeouts || 0}</span>
+                                        </div>
+                                    </div>
+                                    <i class="fa-solid ${isHealthy ? 'fa-shield-check' : (isRestricted ? 'fa-user-lock' : 'fa-triangle-exclamation')} absolute -bottom-4 -right-4 text-7xl text-gray-100 opacity-50 transform -rotate-12 group-hover:scale-110 transition-transform"></i>
                                 `;
-                        }
-                        return '<span class="text-gray-300 italic text-[10px]">No intelligence gathered.</span>';
-                    })()}
-                    </td>
-                    <td class="p-4 text-right align-top">
-                         <div class="flex flex-col items-end gap-2">
-                            <a href="${row['URL']}" target="_blank" class="flex items-center gap-2 text-[9px] font-bold text-gray-400 hover:text-white hover:bg-scooter-green hover:border-scooter-green transition-all bg-white px-2.5 py-1.5 rounded-lg border border-gray-200 shadow-sm uppercase tracking-wider">
-                                View Profile <i class="fa-solid fa-external-link-alt text-[7px]"></i>
-                            </a>
-                            ${row['Email'] ? `<span class="text-[9px] font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 overflow-hidden text-ellipsis max-w-[140px] font-bold">${row['Email']}</span>` : ''}
-                         </div>
-                    </td>
-                    <td class="p-4 text-right align-top">
-                        <div class="flex flex-col items-end gap-2">
-                             <span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter ${statusClass} border shadow-sm">${row['Status']}</span>
-                             ${row['Last Message'] ? `
-                                <div class="group/msg relative">
-                                    <div class="flex items-center gap-1 text-[8px] font-bold text-scooter-green uppercase tracking-tighter cursor-help bg-green-50 px-2 py-0.5 rounded border border-green-100">
-                                        <i class="fa-solid fa-paper-plane"></i> SENT
-                                    </div>
-                                    <div class="absolute right-0 bottom-full mb-2 w-64 p-3 bg-gray-900 text-white text-[10px] rounded-xl shadow-2xl opacity-0 translate-y-2 group-hover/msg:opacity-100 group-hover/msg:translate-y-0 transition-all pointer-events-none z-50 border border-gray-800 text-left">
-                                        <div class="text-scooter-green font-black mb-1 uppercase tracking-widest text-[8px]">Message Sent:</div>
-                                        <div class="text-gray-300 leading-relaxed font-medium">${row['Last Message']}</div>
-                                        <div class="mt-2 pt-2 border-t border-white/10 text-[8px] text-gray-400 font-bold flex justify-between">
-                                            <span>TIMESTAMP</span>
-                                            <span>${new Date(row['Last Message At']).toLocaleString()}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                             ` : ''}
-                             ${row['Last Received Message'] ? `
-                                <div class="group/reply relative mt-1">
-                                    <div class="flex items-center gap-1 text-[8px] font-bold text-blue-600 uppercase tracking-tighter cursor-help bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                                        <i class="fa-solid fa-reply"></i> REPLY
-                                    </div>
-                                    <div class="absolute right-0 bottom-full mb-2 w-64 p-3 bg-gray-900 text-white text-[10px] rounded-xl shadow-2xl opacity-0 translate-y-2 group-hover/reply:opacity-100 group-hover/reply:translate-y-0 transition-all pointer-events-none z-50 border border-gray-800 text-left">
-                                        <div class="text-blue-400 font-black mb-1 uppercase tracking-widest text-[8px]">Incoming Reply:</div>
-                                        <div class="text-gray-300 leading-relaxed font-medium">${row['Last Received Message']}</div>
-                                        <div class="mt-2 pt-2 border-t border-white/10 text-[8px] text-gray-400 font-bold flex justify-between">
-                                            <span>TIMESTAMP</span>
-                                            <span>${new Date(row['Last Received At']).toLocaleString()}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                             ` : ''}
-                        </div>
-                    </td>
-                </tr>
-                `;
-            });
-        }
+                            container.appendChild(card);
+                        });
+                    }
 
-        function toggleAllSelection() {
-            const master = document.getElementById('select-all-candidates');
-            const checkboxes = document.getElementsByName('candidate-select');
-            checkboxes.forEach(cb => cb.checked = master.checked);
-            updateSelectionUI();
-        }
+                    if (hasAlert && alertBadge) alertBadge.classList.remove('hidden');
+                    else if (alertBadge) alertBadge.classList.add('hidden');
 
-        function updateSelectionUI() {
-            const checkboxes = document.getElementsByName('candidate-select');
-            const selected = Array.from(checkboxes).filter(cb => cb.checked);
-            const toolbar = document.getElementById('selection-toolbar');
-            const count = document.getElementById('selection-count');
-
-            if (selected.length > 0) {
-                toolbar.classList.remove('hidden');
-                count.innerText = selected.length;
-            } else {
-                toolbar.classList.add('hidden');
-                const master = document.getElementById('select-all-candidates');
-                if (master) master.checked = false;
-            }
-        }
-
-        async function processSelected(enrichOnly = true) {
-            const handle = document.getElementById('handle-input').value;
-            const checkboxes = document.getElementsByName('candidate-select');
-            const selectedUrls = Array.from(checkboxes)
-                .filter(cb => cb.checked)
-                .map(cb => cb.value);
-
-            if (selectedUrls.length === 0) return;
-
-            const mode = enrichOnly ? 'enrichment' : 'outreach';
-            const msg = `Launch ${mode} for ${selectedUrls.length} selected candidates?`;
-            if (!confirm(msg)) return;
-
-            try {
-                const res = await fetch('/api/campaign', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        handle: handle,
-                        enrich_only: enrichOnly,
-                        limit: selectedUrls.length,
-                        urls: selectedUrls
-                    })
-                });
-
-                if (res.ok) {
-                    showLogsTab();
+                    if (container.innerHTML === '') {
+                        container.innerHTML = '<div class="col-span-full py-10 text-center text-gray-400">No active accounts detected.</div>';
+                    }
+                } catch (e) {
+                    console.error(e);
+                    container.innerHTML = '<div class="col-span-full py-10 text-center text-red-500">Error loading health report.</div>';
                 }
-            } catch (e) {
-                console.error(e);
-                alert("Failed to start campaign");
             }
-        }
 
-        function showLogsTab() {
-            const terminal = document.querySelector('.terminal-container');
-            if (terminal) {
-                terminal.style.transform = 'translateY(0)';
+            // --- ROLES LOGIC ---
+            async function loadRoleSelector() {
+                try {
+                    const res = await fetch('/api/roles');
+                    rolesData = await res.json();
+                    const select = document.getElementById('role-select');
+                    if (!select) return;
+                    select.innerHTML = '<option value="">-- Choose a Role --</option>';
+                    rolesData.forEach((role, idx) => {
+                        if (!role.name) return;
+                        const opt = document.createElement('option');
+                        opt.value = idx;
+                        opt.textContent = `${role.name} ${role.company_name ? `(${role.company_name})` : ''}`;
+                        select.appendChild(opt);
+                    });
+                } catch (e) { console.error(e); }
             }
-        }
+
+            function loadRoleData() {
+                const idx = document.getElementById('role-select').value;
+                const panel = document.getElementById('harvest-panel');
+                if (idx === "") {
+                    if (panel) panel.classList.add('opacity-50', 'pointer-events-none');
+                    ['hv-url', 'hv-company', 'hv-link', 'hv-location', 'hv-compensation'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.value = '';
+                    });
+                    return;
+                }
+                const role = rolesData[idx];
+                document.getElementById('hv-url').value = role.search_url || "";
+                document.getElementById('hv-company').value = role.company_name || "";
+                document.getElementById('hv-link').value = role.application_link || "";
+                document.getElementById('hv-location').value = role.location || "";
+                document.getElementById('hv-compensation').value = role.compensation || "";
+                if (panel) panel.classList.remove('opacity-50', 'pointer-events-none');
+            }
+
+            async function saveNewRole() {
+                const data = {
+                    name: document.getElementById('new-role-name').value,
+                    job_id: document.getElementById('new-role-id').value,
+                    company_name: document.getElementById('new-hiring-company').value,
+                    application_link: document.getElementById('new-app-link').value,
+                    location: document.getElementById('new-location').value,
+                    compensation: document.getElementById('new-compensation').value,
+                    search_url: document.getElementById('new-role-url').value
+                };
+                if (!data.name) return alert("Role Name is required");
+                try {
+                    await fetch('/api/roles', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    document.getElementById('role-modal').classList.add('hidden');
+                    loadRoleSelector();
+                } catch (e) { console.error(e); }
+            }
 
 
-        async function loadScrapedData() {
-            const handle = document.getElementById('handle-input').value;
-            const tbody = document.getElementById('scraped-data-body');
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400">Loading DB...</td></tr>';
+            // --- LOGS & TERMINAL ---
+            function connectLogs() {
+                if (eventSource && eventSource.readyState === 1) return; // Already connected
+                if (eventSource) eventSource.close();
 
-            try {
-                const res = await fetch(`/api/results?handle=${handle || ''}`);
-                const json = await res.json();
-                const data = json.data || [];
+                eventSource = new EventSource('/api/logs');
+                eventSource.onmessage = function (event) {
+                    const text = event.data;
+                    if (text === "ping") return;
 
+                    const logsContainer = document.getElementById('logs');
+                    const div = document.createElement('div');
+                    div.className = "flex gap-2 font-mono text-[10px] py-0.5 border-b border-gray-800/10";
+                    const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    div.innerHTML = `<span class="text-gray-600 shrink-0">[${time}]</span><span class="text-green-400/90">${text}</span>`;
+
+                    if (text.includes('🛑 SECURITY ALERT') || text.includes('❌ Critical Failure')) {
+                        showDesktopNotification("Security Challenge Triggered", text.split(': ')[1] || "Action required via VNC.");
+                        flashTitle("🚨 ACTION REQUIRED");
+                    } else if (text.includes('✨ Task Completed') || text.includes('✅ Campaign Finished')) {
+                        showDesktopNotification("Task Complete", "Bot sequence finished.");
+                        flashTitle("✅ Task Done");
+                        loadQueue();
+                        loadResults();
+                    }
+
+                    logsContainer.appendChild(div);
+                    logsContainer.scrollTop = logsContainer.scrollHeight;
+
+                    // Prune old logs to keep UI snappy
+                    if (logsContainer.children.length > 200) {
+                        logsContainer.removeChild(logsContainer.firstChild);
+                    }
+
+                    // Auto-expand logs terminal if it's currently collapsed (h-10)
+                    const terminal = document.getElementById('terminal-container');
+                    if (terminal && terminal.classList.contains('h-10')) {
+                        terminal.classList.replace('h-10', 'h-64');
+                    }
+                };
+
+                eventSource.onerror = function (e) {
+                    console.warn("Log stream disconnected. Retrying...");
+                    eventSource.close();
+                    setTimeout(connectLogs, 3000);
+                };
+            }
+
+            // --- HARVESTING ACTIONS ---
+            async function startHarvest() {
+                const handle = document.getElementById('handle-input').value;
+                const idx = document.getElementById('role-select').value;
+                if (idx === "") return alert("Select a Role first");
+                const role = rolesData[idx];
+
+                setStatus('Bot Active', 'bg-scooter-orange');
+                try {
+                    const res = await fetch('/api/harvest', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            handle,
+                            role_name: role.name,
+                            url: role.search_url,
+                            hiring_company: role.company_name,
+                            job_link: role.application_link,
+                            location: role.location,
+                            compensation: role.compensation
+                        })
+                    });
+                    if (res.ok) {
+                        alert("Harvesting Started!");
+                        connectLogs();
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            async function startApolloHarvest() {
+                const handle = document.getElementById('handle-input').value;
+                const url = document.getElementById('apollo-url').value;
+                if (!url) return alert("Apollo URL required");
+                setStatus('Bot Active', 'bg-scooter-apollo');
+                try {
+                    const res = await fetch('/api/apollo_harvest', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            handle,
+                            url,
+                            limit: parseInt(document.getElementById('apollo-limit').value) || 50,
+                            pages: parseInt(document.getElementById('apollo-pages').value) || 1
+                        })
+                    });
+                    if (res.ok) {
+                        alert("Apollo Harvest Started!");
+                        connectLogs();
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            async function startClayHarvest() {
+                const handle = document.getElementById('handle-input').value;
+                const url = document.getElementById('clay-url').value;
+                if (!handle) return alert("Account Handle (Email) is required");
+                if (!url) return alert("Clay URL is required");
+
+                setStatus('Bot Active', 'bg-purple-600');
+                try {
+                    const res = await fetch('/api/clay_harvest', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            handle,
+                            url,
+                            limit: parseInt(document.getElementById('clay-limit').value) || 50
+                        })
+                    });
+                    if (res.ok) {
+                        alert("Clay Enrichment Started!");
+                        connectLogs();
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            async function stopBot() {
+                try {
+                    await fetch('/api/stop', { method: 'POST' });
+                    setStatus('System Idle', 'bg-gray-300');
+                } catch (e) { console.error(e); }
+            }
+
+            // --- USAGE TRACKING ---
+
+            async function loadUsage() {
+                const handle = document.getElementById('handle-input').value;
+                if (!handle) return;
+                try {
+                    const res = await fetch(`/api/usage?handle=${encodeURIComponent(handle)}&t=${Date.now()}`);
+                    const data = await res.json();
+
+                    const updateMeter = (idPrefix, current, limit) => {
+                        const text = document.getElementById(`${idPrefix}-usage-text`);
+                        const bar = document.getElementById(`${idPrefix}-usage-bar`);
+                        if (text && bar) {
+                            text.innerText = `${current} / ${limit}`;
+                            const pct = Math.min(100, (current / limit) * 100);
+                            bar.style.width = `${pct}%`;
+                        }
+                    };
+                    updateMeter('enrich', data.count || 0, data.limit || 25);
+                    updateMeter('harvest', data.harvest_pages || 0, data.harvest_limit || 50);
+                    updateMeter('search', data.search_count || 0, data.search_limit || 100);
+
+                    const badge = document.getElementById('account-status-badge');
+                    if (badge) {
+                        badge.innerText = "Active";
+                        badge.className = "text-[7px] font-black px-1.5 py-0.5 rounded-md bg-green-100 text-green-700 tracking-widest uppercase";
+                    }
+                } catch (e) {
+                    console.error(e);
+                    const badge = document.getElementById('account-status-badge');
+                    if (badge) {
+                        badge.innerText = "Offline";
+                        badge.className = "text-[7px] font-black px-1.5 py-0.5 rounded-md bg-red-100 text-red-700 tracking-widest uppercase";
+                    }
+                }
+            }
+
+
+            // --- CAMPAIGNS ---
+            let isSafeMode = true;
+
+            function setSafeMode(isSafe) {
+                isSafeMode = isSafe;
+                const safeBtn = document.getElementById('mode-safe');
+                const fastBtn = document.getElementById('mode-fast');
+                const limitInput = document.getElementById('daily-limit');
+
+                if (isSafe) {
+                    safeBtn.className = "px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all bg-scooter-green text-white shadow-lg shadow-green-500/20";
+                    fastBtn.className = "px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all text-gray-400";
+                    limitInput.value = 15;
+                } else {
+                    fastBtn.className = "px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all bg-red-500 text-white shadow-lg shadow-red-500/20";
+                    safeBtn.className = "px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all text-gray-400";
+                    limitInput.value = 35;
+                }
+            }
+
+            async function startCampaign() {
+                await launchCampaignAction();
+            }
+
+            async function launchCampaignAction() {
+                const handle = document.getElementById('handle-input').value;
+                if (!handle) return alert("Enter LinkedIn Handle");
+
+                const enrichOnly = document.getElementById('enrich-only').checked;
+                const limit = document.getElementById('daily-limit').value || 10;
+                const note = document.getElementById('connection-note').value;
+
+                const selectedUrls = Array.from(document.getElementsByName('queue-select'))
+                    .filter(cb => cb.checked).map(cb => cb.value);
+
+                if (!confirm(`Launch campaign for ${selectedUrls.length || 'all'} items?`)) return;
+
+                try {
+                    const body = {
+                        handle,
+                        enrich_only: enrichOnly,
+                        limit: selectedUrls.length || parseInt(limit),
+                        note: enrichOnly ? null : note
+                    };
+                    if (selectedUrls.length > 0) body.urls = selectedUrls;
+
+                    const res = await fetch('/api/campaign', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    const data = await res.json();
+                    if (data.status === 'started') {
+                        alert("Campaign Started!");
+                        connectLogs();
+                    } else {
+                        alert("Error: " + data.message);
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            // --- RESULTS / CANDIDATES ---
+            async function loadResults() {
+                const handle = document.getElementById('handle-input').value;
+                const tbody = document.getElementById('results-table-body');
+                if (!tbody) return;
+                tbody.innerHTML = '<tr><td colspan="7" class="p-10 text-center"><i class="fas fa-spinner fa-spin mr-2"></i>Loading Pool Data...</td></tr>';
+
+                try {
+                    const res = await fetch(`/api/results?handle=${handle}&refresh=true`);
+                    const json = await res.json();
+                    allPoolData = json.data || [];
+
+                    // Role filter
+                    const roleSelect = document.getElementById('filter-role');
+                    if (roleSelect) {
+                        const roles = [...new Set(allPoolData.map(r => r.Role))].filter(Boolean);
+                        roleSelect.innerHTML = '<option value="all">All Roles</option>' +
+                            roles.map(r => `<option value="${r}">${r}</option>`).join('');
+                    }
+                    renderResultsTable(allPoolData);
+                } catch (e) {
+                    console.error(e);
+                    tbody.innerHTML = '<tr><td colspan="7" class="p-10 text-center text-red-400">Error loading data.</td></tr>';
+                }
+            }
+
+            function filterResults() {
+                const role = document.getElementById('filter-role').value;
+                const status = document.getElementById('filter-status').value;
+                const source = document.getElementById('filter-source').value;
+                const filtered = allPoolData.filter(row => {
+                    const rMatch = role === 'all' || row.Role === role;
+                    const sMatch = status === 'all' || row.Status === status;
+                    const srcMatch = source === 'all' || row.Source === source;
+                    return rMatch && sMatch && srcMatch;
+                });
+                renderResultsTable(filtered);
+            }
+
+            function renderResultsTable(data) {
+                const tbody = document.getElementById('results-table-body');
+                if (!tbody) return;
                 tbody.innerHTML = '';
 
                 if (data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-400 italic">No enriched data found yet. Launch a campaign!</td></tr>`;
+                    tbody.innerHTML = '<tr><td colspan="7" class="p-10 text-center text-gray-400">No matching candidates found.</td></tr>';
                     return;
                 }
 
                 data.forEach(row => {
-                    const isEnriched = row['Status'] !== 'HARVESTED';
-                    const statusClass = isEnriched ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-gray-50 text-gray-500 border-gray-100';
+                    let statusClass = 'bg-gray-100 text-gray-400';
+                    const s = row.Status;
+                    if (s === 'COMPLETED') statusClass = 'bg-green-100 text-green-700 border-green-200';
+                    else if (s === 'CONNECTED' || s === 'MESSAGED') statusClass = 'bg-blue-100 text-blue-700 border-blue-200';
+                    else if (s === 'PENDING') statusClass = 'bg-yellow-100 text-yellow-700 border-yellow-200';
+                    else if (s === 'ENRICHED') statusClass = 'bg-orange-100 text-orange-600 border-orange-200';
+                    else if (s === 'FAILED') statusClass = 'bg-red-100 text-red-700 border-red-200';
+                    else if (s === 'HARVESTED') statusClass = 'bg-gray-100 text-gray-600 border-gray-300';
 
-                    tbody.innerHTML += `
+                    // Source color
+                    let srcClass = 'bg-gray-100 text-gray-500';
+                    if (row.Source === 'Clay') srcClass = 'bg-purple-100 text-purple-700 border-purple-200';
+                    else if (row.Source === 'Apollo') srcClass = 'bg-blue-100 text-blue-700 border-blue-200';
+                    else if (row.Source === 'LinkedIn') srcClass = 'bg-scooter-green/10 text-scooter-green border-scooter-green/20';
+
+                    // UI Heuristic: Fix capture errors (name vs location)
+                    let displayName = row['Full Name'] || 'Unknown';
+                    let displayLocation = row.Location || '-';
+                    const locKeys = ['india', 'area', 'pune', 'mumbai', 'london', 'usa', 'uk', 'division', 'maharashtra'];
+                    const isLocationInName = displayName.toLowerCase().split(/[ ,-]+/).some(w => locKeys.includes(w)) && displayName.split(' ').length >= 2;
+
+                    if (isLocationInName) {
+                        if (displayLocation === '-' || !displayLocation || displayLocation === 'Unknown') displayLocation = displayName;
+
+                        // Fallback: Try to get a decent name from the handle in the URL
+                        const urlStr = row['LinkedIn URL'] || row.URL || "";
+                        if (urlStr.includes('/in/')) {
+                            let handle = urlStr.split('/in/')[1]?.split(/[/?]/)[0] || "";
+                            if (handle) {
+                                // Remove trailing alphanumeric random strings (e.g. -a1b2c3d4)
+                                handle = handle.replace(/-[0-9a-z]{7,15}$/, '');
+                                displayName = handle.split('-')
+                                    .filter(s => s.length > 0)
+                                    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+                                    .join(' ');
+                            }
+                        }
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-50/50 transition-colors border-b border-gray-50 last:border-0 align-top';
+                    tr.innerHTML = `
+                            <td class="p-4 w-[3%]"><input type="checkbox" name="candidate-select" value="${row.URL}" onchange="updateSelectionUI()" class="w-4 h-4 rounded border-gray-300"></td>
+                            <td class="p-4 w-[15%]">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    ${row.Picture ? `<img src="${row.Picture}" class="w-8 h-8 rounded-lg shadow-sm shrink-0">` : `<div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-[10px] font-black shrink-0">${(displayName).charAt(0)}</div>`}
+                                    <div class="overflow-hidden">
+                                        <div class="font-bold text-sm text-gray-900 truncate" title="${displayName}">${displayName}</div>
+                                        <div class="text-[10px] text-gray-500 truncate" title="${row.Headline || ''}">${row.Headline || 'Pending enrichment...'}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="p-4 w-[8%]">
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase border shrink-0 ${srcClass}">${row.Source || 'Unknown'}</span>
+                            </td>
+                            <td class="p-4 w-[12%]">
+                                <div class="flex items-center gap-2 overflow-hidden">
+                                    <a href="${row['LinkedIn URL'] || row.URL}" target="_blank" class="text-blue-500 hover:text-blue-700 shrink-0" title="View Profile">
+                                        <i class="fa-brands fa-linkedin text-lg"></i>
+                                    </a>
+                                    <div class="text-[10px] font-medium text-gray-400 truncate flex-1" title="${row['LinkedIn URL'] || row.URL}">${(row['LinkedIn URL'] || row.URL).replace('https://www.linkedin.com/in/', '')}</div>
+                                    <button onclick="navigator.clipboard.writeText('${row['LinkedIn URL'] || row.URL}')" class="text-gray-300 hover:text-gray-500 transition-colors" title="Copy URL">
+                                        <i class="fa-solid fa-copy text-[9px]"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td class="p-4 w-[13%]">
+                                <div class="text-xs font-bold text-gray-800 truncate" title="${row.Role || '-'}">${row.Role || '-'}</div>
+                                <div class="text-[10px] text-gray-500 font-medium truncate" title="${row['Current Company'] || '-'}">${row['Current Company'] || '-'}</div>
+                            </td>
+                            <td class="p-4 w-[12%]">
+                                <div class="flex items-center gap-2 text-[10px] text-gray-500 font-medium truncate" title="${displayLocation}">
+                                    <i class="fa-solid fa-location-dot text-scooter-green text-[9px]"></i>
+                                    <span>${displayLocation}</span>
+                                </div>
+                            </td>
+                            <td class="p-4 w-[16%]">
+                                <div class="space-y-1 overflow-hidden">
+                                    ${row.Experience && row.Experience.length > 0 ?
+                            `<div class="text-[11px] font-bold text-gray-900 truncate" title="${row.Experience[0].title}">${row.Experience[0].title}</div>
+                                         <div class="text-[10px] text-gray-500 truncate" title="${row.Experience[0].company}">@ ${row.Experience[0].company}</div>` :
+                            '<div class="text-[10px] text-gray-400 italic">No experience data</div>'}
+                                </div>
+                            </td>
+                            <td class="p-4 w-[12%] text-center">
+                                <span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase border ${statusClass}">${s}</span>
+                            </td>
+                            <td class="p-4 w-[9%] text-right">
+                                <button onclick="alert('Coming soon: Direct Message')" class="p-2 bg-gray-50 hover:bg-scooter-green/10 text-gray-400 hover:text-scooter-green rounded-lg transition-all" title="Send Message">
+                                    <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                                </button>
+                            </td>
+                        `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+
+            function downloadFilteredResults() {
+                if (!allPoolData || allPoolData.length === 0) return alert("No data to download");
+
+                const role = document.getElementById('filter-role').value;
+                const status = document.getElementById('filter-status').value;
+                const source = document.getElementById('filter-source').value;
+
+                const filtered = allPoolData.filter(row => {
+                    const rMatch = role === 'all' || row.Role === role;
+                    const sMatch = status === 'all' || row.Status === status;
+                    const srcMatch = source === 'all' || row.Source === source;
+                    return rMatch && sMatch && srcMatch;
+                });
+
+                if (filtered.length === 0) return alert("No matching data for current filters");
+
+                const headers = ["Full Name", "LinkedIn URL", "Source", "Role", "Current Company", "Location", "Status", "Headline", "Email", "Phone"];
+                const csvRows = [headers.join(',')];
+
+                filtered.forEach(row => {
+                    const values = [
+                        `"${row['Full Name'] || ''}"`,
+                        `"${row['LinkedIn URL'] || row.URL || ''}"`,
+                        `"${row.Source || ''}"`,
+                        `"${row.Role || ''}"`,
+                        `"${row['Current Company'] || ''}"`,
+                        `"${row.Location || ''}"`,
+                        `"${row.Status || ''}"`,
+                        `"${(row.Headline || '').replace(/"/g, '""')}"`,
+                        `"${row.Email || ''}"`,
+                        `"${row.Phone || ''}"`
+                    ];
+                    csvRows.push(values.join(','));
+                });
+
+                const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.setAttribute('hidden', '');
+                a.setAttribute('href', url);
+                a.setAttribute('download', `scooter_candidates_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+
+            function toggleAllSelection() {
+                const master = document.getElementById('select-all-candidates');
+                const checkboxes = document.getElementsByName('candidate-select');
+                checkboxes.forEach(cb => cb.checked = master?.checked);
+                updateSelectionUI();
+            }
+
+            function updateSelectionUI() {
+                const selCount = Array.from(document.getElementsByName('candidate-select')).filter(cb => cb.checked).length;
+                const toolbar = document.getElementById('selection-toolbar');
+                const countDisplay = document.getElementById('selection-count');
+                if (toolbar) toolbar.classList.toggle('hidden', selCount === 0);
+                if (countDisplay) countDisplay.innerText = selCount;
+            }
+
+            async function processSelected(enrichOnly = true) {
+                const handle = document.getElementById('handle-input').value;
+                const selectedUrls = Array.from(document.getElementsByName('candidate-select'))
+                    .filter(cb => cb.checked).map(cb => cb.value);
+
+                if (selectedUrls.length === 0) return;
+                if (!confirm(`Process ${selectedUrls.length} selected candidates?`)) return;
+
+                try {
+                    const res = await fetch('/api/campaign', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ handle, enrich_only: enrichOnly, limit: selectedUrls.length, urls: selectedUrls })
+                    });
+                    if (res.ok) {
+                        alert("Processing started!");
+                        connectLogs();
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert("Failed to start campaign");
+                }
+            }
+
+
+            async function loadScrapedData() {
+                const handle = document.getElementById('handle-input').value;
+                const tbody = document.getElementById('scraped-data-body');
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-400">Loading DB...</td></tr>`;
+
+                try {
+                    const res = await fetch(`/api/results?handle=${handle || ''}`);
+                    const json = await res.json();
+                    const data = json.data || [];
+
+                    tbody.innerHTML = '';
+
+                    if (data.length === 0) {
+                        tbody.innerHTML = `<tr>
+                        <td colspan="4" class="text-center py-8 text-gray-400 italic">No enriched data found yet. Launch a campaign!</td>
+                    </tr>`;
+                        return;
+                    }
+
+                    data.forEach(row => {
+                        const isEnriched = row['Status'] !== 'HARVESTED';
+                        const statusClass = isEnriched ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-gray-50 text-gray-500 border-gray-100';
+
+                        tbody.innerHTML += `
                     <tr class="hover:bg-gray-50/50 transition-colors border-b border-gray-50 last:border-0">
                         <td class="px-4 py-4 align-top">
                             <div class="flex items-start gap-3">
                                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden border border-gray-200 shadow-sm shrink-0">
                                     ${row['Picture'] ?
-                            `<img src="${row['Picture']}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                `<img src="${row['Picture']}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                          <span class="text-gray-500 font-bold text-lg hidden">${row['Full Name'].charAt(0)}</span>` :
-                            `<span class="text-gray-500 font-bold text-lg">${row['Full Name'].charAt(0)}</span>`
-                        }
+                                `<span class="text-gray-500 font-bold text-lg">${row['Full Name'].charAt(0)}</span>`
+                            }
                                 </div>
                                 <div class="min-w-0">
                                     <div class="text-[9px] font-bold text-scooter-orange uppercase tracking-wider mb-0.5">${row['Role'] || 'Generic'}</div>
                                     <div class="font-bold text-gray-900 text-sm flex items-center gap-2 mb-0.5">
                                         <span class="truncate">${row['Full Name']}</span>
-                                        ${isEnriched ? '<i class="fa-solid fa-circle-check text-blue-400 text-[10px]" title="Verified Profile"></i>' : ''}
                                     </div>
                                     <div class="text-[10px] text-gray-500 line-clamp-2 leading-relaxed" title="${row['Headline']}">${row['Headline'] || 'Pending enrichment...'}</div>
                                 </div>
@@ -1998,17 +1937,21 @@
                         <td class="px-4 py-4 align-top">
                             <div class="space-y-2">
                                 <div class="flex items-center gap-2 text-[11px] text-gray-700">
-                                    <div class="w-5 h-5 rounded bg-gray-50 flex items-center justify-center border border-gray-100 text-gray-400"><i class="fa-solid fa-briefcase text-[9px]"></i></div>
+                                    <div class="w-5 h-5 rounded bg-gray-50 flex items-center justify-center border border-gray-100 text-gray-400">
+                                        <i class="fa-solid fa-briefcase text-[9px]"></i>
+                                    </div>
                                     <span class="font-bold truncate max-w-[120px]" title="${row['Current Company']}">${row['Current Company'] || '-'}</span>
                                 </div>
                                 <div class="flex items-center gap-2 text-[11px] text-gray-500">
-                                    <div class="w-5 h-5 rounded bg-gray-50 flex items-center justify-center border border-gray-100 text-gray-400"><i class="fa-solid fa-location-dot text-[9px]"></i></div>
+                                    <div class="w-5 h-5 rounded bg-gray-50 flex items-center justify-center border border-gray-100 text-gray-400">
+                                        <i class="fa-solid fa-location-dot text-[9px]"></i>
+                                    </div>
                                     <span class="truncate max-w-[120px]">${row['Location'] || '-'}</span>
                                 </div>
                             </div>
                         </td>
                         <td class="px-4 py-4 align-top">
-                             <div class="space-y-1.5 flex flex-col">
+                            <div class="space-y-1.5 flex flex-col">
                                 ${row['Email'] ? `
                                 <div class="flex items-center gap-2 text-[11px] text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100 w-fit">
                                     <i class="fa-solid fa-envelope text-[9px]"></i>
@@ -2020,7 +1963,7 @@
                                     <span class="font-mono">${row['Phone']}</span>
                                 </div>` : ''}
                                 ${!row['Email'] && !row['Phone'] ? '<span class="text-[10px] text-gray-400 italic px-1">No contact info yet</span>' : ''}
-                             </div>
+                            </div>
                         </td>
                         <td class="px-4 py-4 align-top hidden lg:table-cell border-l border-gray-50/50">
                             <div class="space-y-3 max-w-[450px]">
@@ -2030,165 +1973,184 @@
                                     </span>
                                     <div class="space-y-2">
                                         ${Array.isArray(row['Experience']) && row['Experience'].length > 0 ?
-                            row['Experience'].slice(0, 2).map((e, idx) => `
-                                                <div class="text-[10px] leading-snug group/exp mb-3 last:mb-0">
-                                                    <div class="font-bold text-gray-800">${e.title}</div>
-                                                    <div class="text-gray-500 flex items-center flex-wrap gap-x-2 gap-y-1">
-                                                        <span class="font-medium">${e.company}</span>
-                                                        ${e.dates ? `<span class="text-[8px] opacity-60">• ${e.dates}</span>` : ''}
-                                                        
-                                                        ${e.company_industry || e.company_description ? `
-                                                            <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="text-scooter-green text-[8px] font-bold uppercase tracking-wider bg-green-50 px-1.5 py-0.5 rounded border border-green-100 hover:bg-scooter-green hover:text-white transition-all ml-auto">
-                                                                Intelligence <i class="fa-solid fa-chevron-down ml-1"></i>
-                                                            </button>
-                                                            <div class="hidden w-full mt-2 p-2 bg-gray-50 rounded-lg border border-gray-100 animate-fade-in">
-                                                                <div class="grid grid-cols-2 gap-2 mb-2">
-                                                                    ${e.company_industry ? `<div><span class="text-[7px] text-gray-400 block uppercase font-bold">Industry</span><span class="text-[9px] text-gray-600 block">${e.company_industry}</span></div>` : ''}
-                                                                    ${e.company_size ? `<div><span class="text-[7px] text-gray-400 block uppercase font-bold">Size</span><span class="text-[9px] text-gray-600 block">${e.company_size}</span></div>` : ''}
-                                                                    ${e.company_headquarters ? `<div><span class="text-[7px] text-gray-400 block uppercase font-bold">HQ</span><span class="text-[9px] text-gray-600 block">${e.company_headquarters}</span></div>` : ''}
-                                                                    ${e.company_website ? `<div><span class="text-[7px] text-gray-400 block uppercase font-bold">Website</span><a href="${e.company_website}" target="_blank" class="text-[9px] text-blue-500 block hover:underline truncate">${e.company_website.replace('https://', '')}</a></div>` : ''}
-                                                                </div>
-                                                                ${e.company_description ? `<div class="pt-1 border-t border-gray-200/50"><span class="text-[7px] text-gray-400 block uppercase font-bold mb-1">About</span><p class="text-[9px] text-gray-500 italic line-clamp-3 leading-relaxed">${e.company_description}</p></div>` : ''}
-                                                            </div>
-                                                        ` : ''}
-                                                    </div>
+                                row['Experience'].slice(0, 2).map((e, idx) => `
+                                            <div class="text-[10px] leading-snug group/exp mb-3 last:mb-0">
+                                                <div class="font-bold text-gray-800">${e.title}</div>
+                                                <div class="text-gray-500 flex items-center flex-wrap gap-x-2 gap-y-1">
+                                                    <span class="font-medium">${e.company}</span>
+                                                    ${e.dates ? `<span class="text-[8px] opacity-60">• ${e.dates}</span>` : ''}
                                                 </div>
+                                            </div>
                                             `).join('') : '<span class="text-gray-300 italic text-[10px]">No experience detailed yet.</span>'
-                        }
-                                        ${Array.isArray(row['Experience']) && row['Experience'].length > 2 ? `<div class="text-[8px] text-blue-400 font-bold">+ ${row['Experience'].length - 2} more roles</div>` : ''}
-                                    </div>
-                                </div>
-                                <div class="pt-1">
-                                    <span class="font-bold text-gray-400 block mb-1.5 uppercase text-[8px] tracking-widest flex items-center gap-1.5">
-                                        <i class="fa-solid fa-star text-[7px]"></i> Key Skills
-                                    </span>
-                                    <div class="flex flex-wrap gap-1">
-                                        ${row['Skills'] ? row['Skills'].split(',').slice(0, 8).map(s => `
-                                            <span class="text-[9px] bg-gray-50 text-gray-600 px-1.5 py-0.5 rounded border border-gray-100">${s.trim()}</span>
-                                        `).join('') : '<span class="text-gray-300 italic text-[10px]">Fetching skills...</span>'}
+                            }
                                     </div>
                                 </div>
                             </div>
                         </td>
                         <td class="px-4 py-4 text-right align-top shrink-0">
-                             <div class="flex flex-col items-end gap-3">
+                            <div class="flex flex-col items-end gap-3">
                                 <span class="text-[8px] font-black uppercase px-2 py-1 rounded-full ${statusClass} border tracking-tighter shadow-sm">${row['Status']}</span>
                                 <a href="${row['URL']}" target="_blank" class="flex items-center gap-2 text-[10px] font-bold text-gray-400 hover:text-scooter-green transition-all bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm hover:shadow-md">
                                     PROFILE <i class="fa-solid fa-external-link-alt text-[9px]"></i>
                                 </a>
-                             </div>
+                            </div>
                         </td>
-                    </tr>
-                `;
-                });
-            } catch (e) {
-                console.error(e);
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-red-400">Error loading data</td></tr>`;
+                    </tr>`;
+                    });
+                } catch (e) {
+                    console.error(e);
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-red-400">Error loading data</td></tr>`;
+                }
             }
-        }
 
-        // Init
-        connectLogs();
-        loadRoleSelector();
-        loadQueue();
-        loadScrapedData();
-
-        // Listeners
-        const limitInput = document.getElementById('daily-limit');
-        if (limitInput) limitInput.addEventListener('input', renderQueue);
-
-        async function loadUsage() {
-            const handle = document.getElementById('handle-input').value;
-
-            try {
-                const res = await fetch(`/api/usage?handle=${handle}`);
-                const data = await res.json();
-
-                // 1. Sidebar Tiered Display
-                const categories = {
-                    'enrich_profiles': { prefix: 'enrich' },
-                    'harvested_cards': { prefix: 'harvest' },
-                    'people_searches': { prefix: 'search' }
-                };
-
-                for (const [key, mapping] of Object.entries(categories)) {
-                    const info = data[key];
-                    if (!info || !info.daily) continue;
-
-                    const p = mapping.prefix;
-
-                    // Daily (Main Bar)
-                    const textEl = document.getElementById(`${p}-usage-text`);
-                    const barEl = document.getElementById(`${p}-usage-bar`);
-                    if (textEl) textEl.innerText = `${info.daily.count}/${info.daily.limit}`;
-                    if (barEl) {
-                        const pct = Math.min(100, (info.daily.count / info.daily.limit) * 100);
-                        barEl.style.width = `${pct}%`;
-                        if (pct >= 90) barEl.style.backgroundColor = '#ef4444';
-                        else if (pct >= 75) barEl.style.backgroundColor = '#f59e0b';
+            // --- REVIEW QUEUE ---
+            async function loadQueue() {
+                const handle = document.getElementById('handle-input').value;
+                const badge = document.getElementById('queue-badge');
+                try {
+                    const res = await fetch(`/api/queue?handle=${encodeURIComponent(handle)}`);
+                    const data = await res.json();
+                    queueData = data.data || [];
+                    renderQueue(queueData);
+                    if (badge) {
+                        badge.textContent = queueData.length;
+                        badge.classList.toggle('hidden', queueData.length === 0);
                     }
+                } catch (e) { console.error(e); }
+            }
 
-                    // Tiers
-                    const sLim = document.getElementById(`${p}-session-lim`);
-                    const wCnt = document.getElementById(`${p}-weekly-cnt`);
-                    const mCnt = document.getElementById(`${p}-monthly-cnt`);
+            function renderQueue(data) {
+                const tbody = document.getElementById('queue-body');
+                const countEl = document.getElementById('queue-count');
+                if (!tbody) return;
+                tbody.innerHTML = '';
+                if (countEl) countEl.textContent = `${data.length} candidates pending`;
 
-                    if (sLim) sLim.innerText = info.session.limit;
-                    if (wCnt) wCnt.innerText = `${info.weekly.count}/${info.weekly.limit}`;
-                    if (mCnt) mCnt.innerText = `${info.monthly.count}/${info.monthly.limit}`;
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="p-10 text-center text-gray-400 italic">Queue is empty. Find some leads first!</td></tr>';
+                    return;
                 }
 
-                // 2. Account Metadata
-                const statusBadge = document.getElementById('account-status-badge');
-                if (statusBadge && data.account_meta) {
-                    statusBadge.innerText = data.account_meta.status;
-                    if (data.account_meta.status.includes('WARM-UP')) {
-                        statusBadge.className = "text-[7px] font-black px-1.5 py-0.5 rounded-md bg-orange-100 text-orange-700 tracking-widest uppercase";
-                    } else {
-                        statusBadge.className = "text-[7px] font-black px-1.5 py-0.5 rounded-md bg-green-100 text-green-700 tracking-widest uppercase";
+                data.forEach((item, idx) => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0";
+                    tr.innerHTML = `
+                            <td class="p-4 w-10"><input type="checkbox" name="queue-select" value="${item.linkedin_url}" class="w-4 h-4 rounded border-gray-300"></td>
+                            <td class="p-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-scooter-orange/10 flex items-center justify-center text-scooter-orange font-bold text-xs">
+                                        ${item.full_name?.[0] || '?'}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="font-bold text-gray-800 text-sm truncate">${item.full_name}</div>
+                                        <div class="text-[10px] text-gray-400 truncate">${item.headline || 'No headline'}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="p-4 text-xs font-mono text-gray-500 hidden md:table-cell">${item.company || '-'}</td>
+                            <td class="p-4 text-right">
+                                <button onclick="deleteQueueItem('${item.linkedin_url}')" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
+                            </td>
+                        `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // --- REVIEW QUEUE HELPERS ---
+            async function deleteQueueItem(url) {
+                const handle = document.getElementById('handle-input').value;
+                try {
+                    await fetch('/api/queue', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ handle, url })
+                    });
+                    loadQueue();
+                } catch (e) { console.error(e); }
+            }
+
+            async function clearQueue() {
+                const handle = document.getElementById('handle-input').value;
+                if (!confirm("Are you sure you want to clear the entire queue?")) return;
+                try {
+                    await fetch(`/api/queue?handle=${encodeURIComponent(handle)}&clear_all=true`, { method: 'DELETE' });
+                    loadQueue();
+                } catch (e) { console.error(e); }
+            }
+
+            // --- REPLY CHECKING ---
+            async function checkRepliesNow() {
+                const handle = document.getElementById('handle-input').value;
+                if (!handle) return alert("Enter LinkedIn Handle");
+                setStatus('Bot Active', 'bg-scooter-green');
+                try {
+                    const res = await fetch('/api/check_replies', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ handle })
+                    });
+                    if (res.ok) {
+                        alert("Reply check sequence started");
+                        connectLogs();
                     }
+                } catch (e) { console.error(e); }
+            }
+
+            function toggleAutoCheck() {
+                const btn = document.getElementById('auto-check-toggle');
+                if (autoCheckInterval) {
+                    clearInterval(autoCheckInterval);
+                    autoCheckInterval = null;
+                    btn.innerHTML = '<i class="fa-solid fa-clock"></i> AUTO-CHECK: OFF';
+                    btn.classList.replace('bg-green-600', 'bg-gray-600');
+                } else {
+                    btn.innerHTML = '<i class="fa-solid fa-clock"></i> AUTO-CHECK: ON';
+                    btn.classList.replace('bg-gray-600', 'bg-green-600');
+                    checkRepliesNow();
+                    autoCheckInterval = setInterval(checkRepliesNow, 30 * 60 * 1000); // 30 mins
                 }
+            }
 
-                document.getElementById('last-usage-sync').innerText = `Synced: ${new Date().toLocaleTimeString()}`;
-
-                // 2. Button State Management
-                const badge = document.getElementById('harvest-usage-badge');
-                if (badge) {
-                    const searchInfo = data.people_searches;
-                    badge.innerText = `Daily Search: ${searchInfo.daily.count} / ${searchInfo.daily.limit}`;
-
-                    const btn = document.querySelector('button[onclick="startHarvest()"]');
-                    if (!data.people_searches.is_safe || !data.harvested_cards.is_safe) {
-                        if (btn) {
-                            btn.disabled = true;
-                            btn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
-                            btn.innerText = 'Limit Reached';
+            // --- SYSTEM MONITOR ---
+            async function checkBotStatus() {
+                try {
+                    const res = await fetch('/api/process_status');
+                    const data = await res.json();
+                    const indicator = document.getElementById('bot-status-indicator');
+                    if (indicator) {
+                        if (data.busy) {
+                            indicator.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-scooter-green animate-pulse"></span> Running';
+                            indicator.className = "flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-50 text-scooter-green text-[10px] font-black uppercase tracking-tighter border border-green-100 shadow-sm";
+                        } else {
+                            indicator.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span> Idle';
+                            indicator.className = "flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 text-gray-400 text-[10px] font-black uppercase tracking-tighter";
                         }
-                    } else {
-                        if (btn) {
-                            btn.disabled = false;
-                            btn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
-                            btn.innerHTML = '<i class="fa-solid fa-play"></i> Start Harvesting Matches';
-                        }
                     }
+                } catch (e) { }
+            }
+
+            // --- INITIALIZATION ---
+            document.addEventListener('DOMContentLoaded', () => {
+                const handleIn = document.getElementById('handle-input');
+                if (handleIn) {
+                    handleIn.addEventListener('change', () => {
+                        loadUsage();
+                        loadQueue();
+                        loadResults();
+                    });
                 }
-            } catch (e) { console.error(e); }
-        }
 
-        // Auto-refresh usage every 10 seconds for real-time tracking
-        setInterval(loadUsage, 10000);
-
-        const handleIn = document.getElementById('handle-input');
-        if (handleIn) {
-            handleIn.addEventListener('change', loadQueue);
-            handleIn.addEventListener('blur', loadQueue);
-            handleIn.addEventListener('change', loadUsage);
-            handleIn.addEventListener('blur', loadUsage);
-        }
-
-
-        loadUsage();
-    </script>
+                // Default view
+                switchTab('harvest');
+                connectLogs();
+                loadRoleSelector();
+                loadUsage();
+                setInterval(checkBotStatus, 3000);
+                setInterval(loadUsage, 15000);
+            });
+        </script>
 </body>
 
 </html>

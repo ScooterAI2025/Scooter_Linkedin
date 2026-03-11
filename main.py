@@ -17,6 +17,13 @@ if __name__ == "__main__":
     parser.add_argument("--enrich-only", action="store_true")
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--urls", nargs="*", help="Specific URLs to process")
+    parser.add_argument("--note", help="Custom connection request note")
     args = parser.parse_args()
     
-    launch_connect_follow_up_campaign(args.handle, enrich_only=args.enrich_only, limit=args.limit, urls=args.urls)
+    launch_connect_follow_up_campaign(
+        args.handle, 
+        enrich_only=args.enrich_only, 
+        limit=args.limit, 
+        urls=args.urls,
+        note=args.note
+    )

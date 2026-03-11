@@ -98,12 +98,10 @@ def launch_connect_follow_up_campaign(
         enrich_only: bool = False,
         limit: int = 20,
         urls: Optional[list[str]] = None,
+        note: Optional[str] = None,
 ):
     """
     One-liner to run the connect → follow-up campaign.
-
-    If handle is not provided, automatically uses the first active account
-    from accounts.secrets.yaml — perfect for quick tests and notebooks!
     """
     if handle is None:
         handle = get_first_active_account()
@@ -119,23 +117,29 @@ def launch_connect_follow_up_campaign(
     )
 
     input_csv = session.config['input_csv']
-    logger.info(f"Launching campaign → running as @{handle} | CSV: {input_csv} | Enrich Mode: {enrich_only} | Limit: {limit}")
+    logger.info(f"Launching campaign → running as @{handle} | CSV: {input_csv} | Enrich Mode: {enrich_only} | Limit: {limit} | Note: {'Provided' if note else 'None'}")
 
     profiles_df = load_profiles_df(input_csv)
     
     if urls:
         # Filter profiles to only include the selected URLs
-        # Normalize URLs for matching
         from urllib.parse import urlparse
         def norm(u): 
-            p = urlparse(u)
-            return f"{p.scheme}://{p.netloc}{p.path}".rstrip("/")
+            try:
+                p = urlparse(u)
+                return f"{p.scheme}://{p.netloc}{p.path}".rstrip("/")
+            except: return u
         
         norm_targets = {norm(u) for u in urls}
-        profiles_df = profiles_df[profiles_df['url'].apply(lambda x: norm(x) in norm_targets)]
+        profiles_df = profiles_df[profiles_df.apply(lambda row: any(norm(row[col]) in norm_targets for col in profiles_df.columns if 'url' in col.lower()), axis=1)]
         logger.info(f"Filtered to {len(profiles_df)} selected candidates.")
 
     profiles = sort_profiles(session, profiles_df)
+    
+    # Inject custom note if provided
+    if note:
+        for p in profiles:
+            p['note'] = note
 
     logger.info(f"Loaded {len(profiles):,} profiles from CSV – ready for battle!")
 
