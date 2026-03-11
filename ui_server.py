@@ -415,23 +415,72 @@ def get_results(handle: str = None, refresh: bool = False):
             except Exception as e:
                 print(f"Error reading harvest file: {e}")
 
-        # 2. Get Enrichment Data from DB for the current handle
+        # 2. Get Enrichment Data from ALL available DBs (Global Intelligence Sync)
         db_profiles_map = {}
-        if handle and handle != "undefined":
+        
+        # Helper to process a DB session and update map
+        def process_db(db_path):
             try:
-                db_wrapper = Database.from_handle(handle)
+                db_wrapper = Database(str(db_path))
                 session = db_wrapper.get_session()
                 try:
-                    # Fetch all profiles that have some scraped data
-                    profiles = session.query(Profile).filter(Profile.profile.isnot(None)).all()
+                    # Fetch all profiles that have some scraped data (profile OR data exists)
+                    profiles = session.query(Profile).filter((Profile.profile.isnot(None)) | (Profile.data.isnot(None))).all()
                     for p in profiles:
-                        db_profiles_map[p.public_identifier] = p
+                        # SNAPSHOT: Extract data immediately to avoid DetachedInstanceError after session.close()
+                        p_snapshot = {
+                            "profile": p.profile,
+                            "data": p.data,
+                            "state": p.state,
+                            "last_message": p.last_message,
+                            "last_message_at": p.last_message_at,
+                            "last_received_message": p.last_received_message,
+                            "last_received_at": p.last_received_at
+                        }
+                        
+                        # Priority Logic:
+                        # 1. If not in map, add it.
+                        # 2. If in map but NEW one has more detail (parsed 'profile' vs None), overwrite.
+                        # 3. If BOTH have 'profile', check if NEW one has 'company_details' while OLD one doesn't.
+                        
+                        is_new_better = False
+                        if p.public_identifier not in db_profiles_map:
+                            is_new_better = True
+                        else:
+                            old_p = db_profiles_map[p.public_identifier]
+                            # If old one has no profile but new one does
+                            if p.profile and not old_p["profile"]:
+                                is_new_better = True
+                            # If both have profile, check for company_details (Intelligence)
+                            elif p.profile and old_p["profile"]:
+                                old_profile_dict = old_p["profile"] if isinstance(old_p["profile"], dict) else {}
+                                new_profile_dict = p.profile if isinstance(p.profile, dict) else {}
+                                
+                                has_old_intel = any(pos.get("company_details") for pos in old_profile_dict.get("positions", []))
+                                has_new_intel = any(pos.get("company_details") for pos in new_profile_dict.get("positions", []))
+                                
+                                if has_new_intel and not has_old_intel:
+                                    is_new_better = True
+                                # Final fallback: larger data content
+                                elif has_new_intel == has_old_intel:
+                                    if len(str(p.profile)) > len(str(old_p["profile"])):
+                                        is_new_better = True
+
+                        if is_new_better:
+                            db_profiles_map[p.public_identifier] = p_snapshot
                 finally:
                     session.close()
                     db_wrapper.Session.remove()
             except Exception as e:
-                print(f"Results DB Error for {handle}: {e}")
-                # traceback.print_exc()
+                print(f"Global Sync Error for {db_path.name}: {e}")
+
+        # Scan for all .db files in the data directory
+        data_dir = ASSETS_DIR / "data"
+        db_files = list(data_dir.glob("*.db"))
+        for db_file in db_files:
+            process_db(db_file)
+            
+        print(f"🧠 Global Intelligence Sync complete. Loaded {len(db_profiles_map)} unique enriched profiles from {len(db_files)} accounts found in {data_dir}.")
 
         final_results = []
         processed_pids = set()
@@ -470,9 +519,9 @@ def get_results(handle: str = None, refresh: bool = False):
 
             # Override with DB data if enriched
             if pid and pid in db_profiles_map:
-                p = db_profiles_map[pid]
-                data = p.profile
-                raw_data = p.data
+                snapshot = db_profiles_map[pid]
+                data = snapshot["profile"]
+                raw_data = snapshot["data"]
                 
                 # Fallback for older stringified data
                 if isinstance(data, str):
@@ -484,11 +533,27 @@ def get_results(handle: str = None, refresh: bool = False):
                     try: raw_data = json.loads(raw_data)
                     except: raw_data = {}
                 
-                # HEAL old records by re-parsing raw Voyager data
-                if raw_data and (not data or "positions" not in data or "skills" not in data):
+                # HEAL old records by re-parsing raw Voyager data (now includes projects/certs/location check)
+                needs_healing = (
+                    not data or 
+                    "positions" not in data or 
+                    "skills" not in data or 
+                    "projects" not in data or
+                    not data.get("location_name")
+                )
+                if raw_data and needs_healing:
                     try:
+                        # Before healing, save current positions that might have company_details
+                        old_positions = data.get("positions", []) if isinstance(data, dict) else []
+                        
                         healed_data = parse_linkedin_voyager_response(raw_data, public_identifier=pid)
                         if healed_data:
+                            # Restore company_details if they already existed in any position with same URN
+                            if old_positions and "positions" in healed_data:
+                                urn_to_details = {p.get("urn"): p.get("company_details") for p in old_positions if p.get("company_details")}
+                                for new_pos in healed_data["positions"]:
+                                    if new_pos.get("urn") in urn_to_details:
+                                        new_pos["company_details"] = urn_to_details[new_pos["urn"]]
                             data = healed_data
                     except Exception as e:
                         print(f"Heal failed for {pid}: {e}")
@@ -526,7 +591,8 @@ def get_results(handle: str = None, refresh: bool = False):
                         "company_industry": details.get('industry') or '',
                         "company_size": details.get('employee_count') or '',
                         "company_headquarters": details.get('headquarters') or '',
-                        "company_specialties": details.get('specialties') or []
+                        "company_specialties": details.get('specialties') or [],
+                        "description": job.get('description') or ''
                     })
                 
                 skills = data.get("skills", [])
@@ -541,7 +607,7 @@ def get_results(handle: str = None, refresh: bool = False):
                     "Current Company": company,
                     "Experience": exp_list,
                     "Skills": skills_str,
-                    "Location": data.get("location_name") or data.get("city") or record["Location"],
+                    "Location": data.get("location_name") or data.get("city") or (f"{data.get('state', '')}, {data.get('country', '')}".strip(", ")) or record["Location"],
                     "State": data.get("state") or "",
                     "Country": data.get("country") or "",
                     "Certifications": data.get("certifications", []),
@@ -550,22 +616,22 @@ def get_results(handle: str = None, refresh: bool = False):
                     "Email": data.get("email") or "",
                     "Phone": data.get("phone") or "",
                     "About": data.get("summary") or data.get("about") or "",
-                    "Status": p.state.upper(),
+                    "Status": snapshot["state"].upper(),
                     "Picture": data.get("profile_picture") or "",
-                    "Last Message": p.last_message,
-                    "Last Message At": p.last_message_at.isoformat() if p.last_message_at else None,
-                    "Last Received Message": p.last_received_message,
-                    "Last Received At": p.last_received_at.isoformat() if p.last_received_at else None
+                    "Last Message": snapshot["last_message"],
+                    "Last Message At": snapshot["last_message_at"].isoformat() if snapshot["last_message_at"] else None,
+                    "Last Received Message": snapshot["last_received_message"],
+                    "Last Received At": snapshot["last_received_at"].isoformat() if snapshot["last_received_at"] else None
                 })
                 processed_pids.add(pid)
 
             final_results.append(record)
 
         # 4. Add profiles from DB that are NOT in current CSV (Just in case)
-        for pid, p in db_profiles_map.items():
+        for pid, snapshot in db_profiles_map.items():
             if pid not in processed_pids:
-                data = p.profile
-                raw_data = p.data
+                data = snapshot["profile"]
+                raw_data = snapshot["data"]
                 
                 if isinstance(data, str):
                     import json
@@ -576,10 +642,27 @@ def get_results(handle: str = None, refresh: bool = False):
                     try: raw_data = json.loads(raw_data)
                     except: raw_data = {}
 
-                if raw_data and (not data or "positions" not in data or "skills" not in data):
+                # HEAL fallback loop
+                needs_healing = (
+                    not data or 
+                    "positions" not in data or 
+                    "skills" not in data or 
+                    "projects" not in data or
+                    not data.get("location_name")
+                )
+                if raw_data and needs_healing:
                     try:
+                        # Save company_details
+                        old_positions = data.get("positions", []) if isinstance(data, dict) else []
+                        
                         healed = parse_linkedin_voyager_response(raw_data, public_identifier=pid)
-                        if healed: data = healed
+                        if healed:
+                            if old_positions and "positions" in healed:
+                                urn_to_details = {p.get("urn"): p.get("company_details") for p in old_positions if p.get("company_details")}
+                                for new_pos in healed["positions"]:
+                                    if new_pos.get("urn") in urn_to_details:
+                                        new_pos["company_details"] = urn_to_details[new_pos["urn"]]
+                            data = healed
                     except: pass
                     
                 if not data: data = {}
@@ -613,6 +696,8 @@ def get_results(handle: str = None, refresh: bool = False):
                         "company_industry": details.get('industry') or '',
                         "company_size": details.get('employee_count') or '',
                         "company_headquarters": details.get('headquarters') or '',
+                        "company_specialties": details.get('specialties') or [],
+                        "description": job.get('description') or ''
                     })
                 
                 skills = data.get("skills", [])
@@ -631,7 +716,7 @@ def get_results(handle: str = None, refresh: bool = False):
                     "Current Company": company,
                     "Experience": exp_list,
                     "Skills": skills_str,
-                    "Location": data.get("location_name") or data.get("city") or "-",
+                    "Location": data.get("location_name") or data.get("city") or (f"{data.get('state', '')}, {data.get('country', '')}".strip(", ")) or "-",
                     "State": data.get("state") or "",
                     "Country": data.get("country") or "",
                     "Certifications": data.get("certifications", []),
@@ -640,15 +725,15 @@ def get_results(handle: str = None, refresh: bool = False):
                     "Email": data.get("email") or "",
                     "Phone": data.get("phone") or "",
                     "About": data.get("summary") or data.get("about") or "",
-                    "Status": p.state.upper(),
+                    "Status": snapshot["state"].upper(),
                     "URL": f"https://www.linkedin.com/in/{pid}",
                     "LinkedIn URL": f"https://www.linkedin.com/in/{pid}",
                     "Source": source,
                     "Picture": data.get("profile_picture") or "",
-                    "Last Message": p.last_message,
-                    "Last Message At": p.last_message_at.isoformat() if p.last_message_at else None,
-                    "Last Received Message": p.last_received_message,
-                    "Last Received At": p.last_received_at.isoformat() if p.last_received_at else None
+                    "Last Message": snapshot["last_message"],
+                    "Last Message At": snapshot["last_message_at"].isoformat() if snapshot.get("last_message_at") else None,
+                    "Last Received Message": snapshot["last_received_message"],
+                    "Last Received At": snapshot["last_received_at"].isoformat() if snapshot.get("last_received_at") else None
                 })
 
         # 5. Newest first

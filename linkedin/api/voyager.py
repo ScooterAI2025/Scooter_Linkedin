@@ -109,8 +109,6 @@ def _resolve_references(data: dict) -> Dict[str, dict]:
         for entity in data.get("included", [])
         if entity.get("entityUrn")
     }
-
-
 def _resolve_star_field(entity: dict, urn_map: Dict[str, dict], field_name: str) -> Any:
     """Resolve *company, *school, *elements, etc."""
     value = entity.get(field_name)
@@ -136,16 +134,33 @@ def _date_range_from_raw(raw: Optional[dict]) -> Optional[DateRange]:
     )
 
 
+
+def _get_text(entity: dict, key: str, default: str = "") -> str:
+    """Handle both plain string and multiLocale string objects."""
+    val = entity.get(key)
+    if isinstance(val, str):
+        return val
+    
+    # Try multiLocale version
+    ml_key = f"multiLocale{key[0].upper()}{key[1:]}"
+    ml_val = entity.get(ml_key)
+    if isinstance(ml_val, dict):
+        # Prefer en_US or just the first available
+        return ml_val.get("en_US") or next(iter(ml_val.values()), default)
+    
+    return val if isinstance(val, str) else default
+
+
 def _enrich_position(pos: dict, urn_map: Dict[str, dict]) -> Position:
     company = _resolve_star_field(pos, urn_map, "*company")
 
     return Position(
-        title=pos.get("title") or "Unknown Title",
+        title=_get_text(pos, "title", "Unknown Title"),
         company_name=company.get("name") if company else pos.get("companyName", "Unknown Company"),
         company_urn=company.get("entityUrn") if company else pos.get("companyUrn"),
         location=pos.get("locationName"),
-        date_range=_date_range_from_raw(pos.get("dateRange")),
-        description=pos.get("description"),
+        date_range=_date_range_from_raw(pos.get("dateRange") or pos.get("timePeriod")),
+        description=_get_text(pos, "description"),
         urn=pos.get("entityUrn"),
     )
 
@@ -157,29 +172,29 @@ def _enrich_education(edu: dict, urn_map: Dict[str, dict]) -> Education:
         school_name=school.get("name") if school else edu.get("schoolName", "Unknown School"),
         degree_name=edu.get("degreeName"),
         field_of_study=edu.get("fieldOfStudy"),
-        date_range=_date_range_from_raw(edu.get("dateRange")),
+        date_range=_date_range_from_raw(edu.get("dateRange") or edu.get("timePeriod")),
         urn=edu.get("entityUrn"),
     )
 
 
 def _enrich_certification(cert: dict, urn_map: Dict[str, dict]) -> Certification:
     return Certification(
-        name=cert.get("name") or "Unknown Certification",
+        name=_get_text(cert, "name", "Unknown Certification"),
         authority=cert.get("authorityName"),
         license_number=cert.get("licenseNumber"),
         display_source=cert.get("displaySource"),
         url=cert.get("url"),
-        date_range=_date_range_from_raw(cert.get("timePeriod")),
+        date_range=_date_range_from_raw(cert.get("timePeriod") or cert.get("dateRange")),
         urn=cert.get("entityUrn"),
     )
 
 
 def _enrich_project(proj: dict, urn_map: Dict[str, dict]) -> Project:
     return Project(
-        title=proj.get("title") or "Unknown Project",
-        description=proj.get("description"),
+        title=_get_text(proj, "title", "Unknown Project"),
+        description=_get_text(proj, "description"),
         url=proj.get("url"),
-        date_range=_date_range_from_raw(proj.get("timePeriod")),
+        date_range=_date_range_from_raw(proj.get("timePeriod") or proj.get("dateRange")),
         urn=proj.get("entityUrn"),
     )
 
@@ -256,17 +271,38 @@ def parse_linkedin_voyager_response(
 
     # Geo Resolution
     geo = _resolve_star_field(profile_entity, urn_map, "*geo")
+    if not geo and "geoLocation" in profile_entity:
+        geo = _resolve_star_field(profile_entity.get("geoLocation", {}), urn_map, "*geo")
+        
     country_name = None
     state_name = None
+    full_location = profile_entity.get("locationName")
+    
     if geo:
+        # Priority: use the full localized name from geo if available
+        geo_name = geo.get("defaultLocalizedName")
+        if geo_name:
+            full_location = geo_name
+            
         country_entity = _resolve_star_field(geo, urn_map, "*country")
         if country_entity:
             country_name = country_entity.get("defaultLocalizedName")
             
         # Try to extract state from "Cambridge, Massachusetts" or similar
+        # We want the part WITHOUT the country.
         localized_no_country = geo.get("defaultLocalizedNameWithoutCountryName")
         if localized_no_country and "," in localized_no_country:
-            state_name = localized_no_country.split(",")[-1].strip()
+            parts = [p.strip() for p in localized_no_country.split(",")]
+            if len(parts) >= 2:
+                state_name = parts[-1]
+        elif full_location and "," in full_location:
+            # Fallback for complex strings: "City, State, Country"
+            parts = [p.strip() for p in full_location.split(",")]
+            if len(parts) >= 3:
+                state_name = parts[-2]
+            elif len(parts) == 2:
+                state_name = parts[-1]
+ 
 
     # Build positions
     positions: List[Position] = []
@@ -355,10 +391,10 @@ def parse_linkedin_voyager_response(
         "first_name": first_name,
         "last_name": last_name,
         "full_name": f"{first_name} {last_name}".strip(),
-        "headline": profile_entity.get("headline"),
+        "headline": profile_entity.get("headline") or profile_entity.get("occupation"),
         "summary": profile_entity.get("summary"),
         "public_identifier": profile_entity.get("publicIdentifier"),
-        "location_name": profile_entity.get("locationName"),
+        "location_name": full_location,
         "state": state_name,
         "geo": geo,
         "country": country_name,
