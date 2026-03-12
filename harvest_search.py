@@ -21,7 +21,7 @@ def harvest_search_results(
     handle: str, search_url: str, start_page: int = 1, max_pages: int = 5, 
     output_file: str = "harvested_urls.csv", 
     job_id: str = "", role_name: str = "", company_name: str = "", app_link: str = "",
-    location: str = "", compensation: str = ""
+    location: str = "", compensation: str = "", source: str = "LinkedIn"
 ):
     """
     Navigates to a LinkedIn search URL, paginates, extracts profile URLs,
@@ -66,6 +66,7 @@ def harvest_search_results(
         return
 
     session = get_session(handle)
+    tracker.record_session(handle) # 🟢 Record session start
     session.ensure_browser()
     page = session.page
 
@@ -338,6 +339,7 @@ def harvest_search_results(
 
 
         logger.info(f"Extracted {len(new_urls_on_page)} NEW URLs from page {page_num}.")
+        tracker.record_health_event(handle, "success") # 🟢 Record page success
 
         # Save progress immediately (Append Mode)
         if new_urls_on_page:
@@ -345,14 +347,14 @@ def harvest_search_results(
             with open(output_path, mode, encoding="utf-8", newline="") as f:
                 writer = csv.writer(f)
                 if not file_exists:
-                    writer.writerow(["url", "job_id", "role_name", "company_name", "app_link", "location", "compensation", "candidate_name", "candidate_pic"]) # Write header
+                    writer.writerow(["url", "job_id", "role_name", "company_name", "app_link", "location", "compensation", "candidate_name", "candidate_pic", "source"]) # Write header
                     file_exists = True # Now it exists
                 
                 for item in new_urls_on_page:
                     writer.writerow([
                         item["url"], job_id, role_name, company_name, 
                         app_link, location, compensation, 
-                        item["name"], item["picture"]
+                        item["name"], item["picture"], source
                     ])
 
         
@@ -398,7 +400,7 @@ def harvest_search_results(
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python harvest_search.py <handle> <search_url> [start_page] [pages] [job_id] [role_name] [company] [link] [loc] [comp]")
+        print("Usage: python harvest_search.py <handle> <search_url> [start_page] [pages] [job_id] [role_name] [company] [link] [loc] [comp] [source]")
         sys.exit(1)
 
     handle = sys.argv[1]
@@ -413,10 +415,12 @@ if __name__ == "__main__":
     app_link = sys.argv[8] if len(sys.argv) > 8 else ""
     location = sys.argv[9] if len(sys.argv) > 9 else ""
     compensation = sys.argv[10] if len(sys.argv) > 10 else ""
+    source = sys.argv[11] if len(sys.argv) > 11 else "LinkedIn"
 
     harvest_search_results(
         handle, search_url, start_page, max_pages, 
         job_id=job_id, role_name=role_name,
         company_name=company_name, app_link=app_link,
-        location=location, compensation=compensation
+        location=location, compensation=compensation,
+        source=source
     )

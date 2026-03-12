@@ -29,8 +29,8 @@ SAFETY_CONFIG = {
     "enrich_profiles": {
         "monthly_target_range": (200, 350),
         "weekly_target_range": (50, 80),
-        "daily_normal": (0, 10),
-        "hard_cap": 13,
+        "daily_normal": (5, 12),
+        "hard_cap": 15,
         "between_profiles_delay": (30, 75),
         "batch_pause_after": (3, 4),
         "batch_pause_duration": (180, 420)

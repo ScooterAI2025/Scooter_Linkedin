@@ -398,11 +398,23 @@
                 <!-- Harvester Config Card -->
                 <div class="bg-white rounded-3xl p-8 card-shadow border border-white opacity-50 pointer-events-none transition-all"
                     id="harvest-panel">
-                    <div class="flex items-center gap-3 mb-6">
-                        <span
-                            class="bg-orange-100 text-scooter-orange text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Step
-                            2</span>
-                        <h3 class="text-xl font-bold text-gray-800">Configure & Run</h3>
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <span
+                                class="bg-orange-100 text-scooter-orange text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Step
+                                2</span>
+                            <h3 class="text-xl font-bold text-gray-800">Configure & Run</h3>
+                        </div>
+
+                        <!-- NEW: Source Picker -->
+                        <div class="flex items-center gap-1 p-1 bg-gray-100 rounded-xl border border-gray-200">
+                            <button onclick="setHarvestMethod('LinkedIn')" id="method-linkedin"
+                                class="harvest-method-btn active px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all">LinkedIn</button>
+                            <button onclick="setHarvestMethod('Apollo')" id="method-apollo"
+                                class="harvest-method-btn px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all">Apollo</button>
+                            <button onclick="setHarvestMethod('Clay')" id="method-clay"
+                                class="harvest-method-btn px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all">Clay</button>
+                        </div>
                     </div>
 
                     <div class="space-y-6">
@@ -417,7 +429,7 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-6">
+                        <div id="fields-linkedin" class="grid grid-cols-2 gap-6">
                             <div>
                                 <label
                                     class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Hiring
@@ -440,9 +452,7 @@
                                         class="w-full bg-scooter-input border-none rounded-xl pl-12 pr-4 py-3 text-sm text-blue-600 font-mono outline-none focus:ring-2 focus:ring-scooter-orange/20 transition-all">
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="grid grid-cols-2 gap-6">
                             <div>
                                 <label
                                     class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Location</label>
@@ -463,6 +473,31 @@
                                         class="w-full bg-scooter-input border-none rounded-xl pl-12 pr-4 py-3 text-sm text-gray-700 font-bold outline-none focus:ring-2 focus:ring-scooter-orange/20 transition-all">
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Apollo Fields -->
+                        <div id="fields-apollo" class="hidden grid grid-cols-2 gap-6">
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Unlock
+                                    Limit</label>
+                                <input type="number" id="hv-apollo-limit" value="50"
+                                    class="w-full bg-scooter-input border-none rounded-xl px-4 py-3 text-sm font-bold text-gray-700 outline-none">
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Pages</label>
+                                <input type="number" id="hv-apollo-pages" value="1"
+                                    class="w-full bg-scooter-input border-none rounded-xl px-4 py-3 text-sm font-bold text-gray-700 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Clay Fields -->
+                        <div id="fields-clay" class="hidden">
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Daily
+                                Progress Limit</label>
+                            <input type="number" id="hv-clay-limit" value="50"
+                                class="w-full bg-scooter-input border-none rounded-xl px-4 py-3 text-sm font-bold text-gray-700 outline-none">
                         </div>
 
                         <!-- Config Config (Automated) -->
@@ -495,9 +530,10 @@
                                 class="hidden text-xs text-center font-bold text-yellow-600 bg-yellow-50 py-1 rounded-lg border border-yellow-100">
                                 Usage: 0/25
                             </div>
-                            <button onclick="startHarvest()"
+                            <button id="btn-start-harvest" onclick="startHarvest()"
                                 class="w-full bg-scooter-green hover:bg-scooter-greenHover text-white font-bold py-4 rounded-xl shadow-lg shadow-green-700/20 transform transition-all active:scale-[0.98] flex justify-center gap-3 items-center text-lg">
-                                <i class="fa-solid fa-play"></i> Start Harvesting Matches
+                                <i class="fa-solid fa-play"></i> Start <span id="harvest-method-label">LinkedIn</span>
+                                Harvesting
                             </button>
                         </div>
                     </div>
@@ -525,15 +561,17 @@
                             <thead
                                 class="text-xs uppercase bg-gray-50 text-gray-500 sticky top-0 font-bold tracking-wider">
                                 <tr>
-                                    <th class="px-4 py-3">Role</th>
+                                    <th class="px-4 py-3">Profile & Role</th>
                                     <th class="px-4 py-3">Company</th>
-                                    <th class="px-4 py-3">Location</th>
-                                    <th class="px-4 py-3 text-right">Profile</th>
+                                    <th class="px-4 py-3 text-center">Source</th>
+                                    <th class="px-4 py-3">Contact Info</th>
+                                    <th class="px-4 py-3 hidden lg:table-cell">Key Experience</th>
+                                    <th class="px-4 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="scraped-data-body" class="divide-y divide-gray-100">
                                 <tr>
-                                    <td colspan="4" class="px-4 py-8 text-center text-gray-400 font-medium">
+                                    <td colspan="6" class="px-4 py-8 text-center text-gray-400 font-medium">
                                         Click Refresh to see data</td>
                                 </tr>
                             </tbody>
@@ -1348,21 +1386,29 @@
                                     </div>
                                     <div class="grid grid-cols-2 gap-3 mb-6">
                                         <div class="bg-gray-50 rounded-2xl p-3 border border-gray-100">
-                                            <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Today's Cap</div>
+                                            <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Session Count</div>
                                             <div class="flex items-end gap-1.5">
-                                                <span class="text-xl font-bold text-gray-800">${acc.daily_usage?.enrichment || 0}</span>
-                                                <span class="text-[10px] font-bold text-gray-400 pb-1">/ 25</span>
+                                                <span class="text-xl font-bold text-gray-800">${metrics.session_count || 0}</span>
+                                                <span class="text-[10px] font-bold text-gray-400 pb-1">RUNS</span>
                                             </div>
                                         </div>
                                         <div class="bg-gray-50 rounded-2xl p-3 border border-gray-100">
-                                            <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Challenges</div>
+                                            <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Challenge Rate</div>
                                             <div class="flex items-end gap-1.5">
-                                                <span class="text-xl font-bold ${metrics.captchas > 0 ? 'text-red-500' : 'text-gray-800'}">${metrics.captchas || 0}</span>
-                                                <span class="text-[10px] font-bold text-gray-400 pb-1 uppercase">CAPTCHA</span>
+                                                <span class="text-xl font-bold ${metrics.challenge_rate > 10 ? 'text-red-500' : 'text-gray-800'}">${metrics.challenge_rate || 0}%</span>
+                                                <span class="text-[10px] font-bold text-gray-400 pb-1 uppercase">RISK</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="space-y-2 mb-2">
+                                        <div class="flex justify-between items-center text-[10px]">
+                                            <span class="font-bold text-gray-500">Total SUCCESS</span>
+                                            <span class="font-black text-green-600 bg-green-50 px-1.5 rounded">${metrics.success || 0}</span>
+                                        </div>
+                                        <div class="flex justify-between items-center text-[10px]">
+                                            <span class="font-bold text-gray-500">Security Challenges</span>
+                                            <span class="font-black ${metrics.captchas > 0 ? 'text-red-600 bg-red-50 px-1.5 rounded' : 'text-gray-400'}">${metrics.captchas || 0}</span>
+                                        </div>
                                         <div class="flex justify-between items-center text-[10px]">
                                             <span class="font-bold text-gray-500">Security Restrictions</span>
                                             <span class="font-black ${metrics.restricted > 0 ? 'text-red-600 bg-red-50 px-1.5 rounded' : 'text-gray-400'}">${metrics.restricted || 0}</span>
@@ -1545,35 +1591,91 @@
             }
 
             // --- HARVESTING ACTIONS ---
+            let currentHarvestMethod = 'LinkedIn';
+            function setHarvestMethod(method) {
+                currentHarvestMethod = method;
+                document.querySelectorAll('.harvest-method-btn').forEach(b => b.classList.remove('active'));
+                const btnId = `method-${method.toLowerCase()}`;
+                if (document.getElementById(btnId)) document.getElementById(btnId).classList.add('active');
+
+                if (document.getElementById('fields-linkedin')) document.getElementById('fields-linkedin').classList.toggle('hidden', method !== 'LinkedIn');
+                if (document.getElementById('fields-apollo')) document.getElementById('fields-apollo').classList.toggle('hidden', method !== 'Apollo');
+                if (document.getElementById('fields-clay')) document.getElementById('fields-clay').classList.toggle('hidden', method !== 'Clay');
+
+                const label = document.getElementById('harvest-method-label');
+                if (label) label.innerText = method;
+
+                const btn = document.getElementById('btn-start-harvest');
+                if (btn) {
+                    if (method === 'LinkedIn') {
+                        btn.className = "w-full bg-scooter-green hover:bg-scooter-greenHover text-white font-bold py-4 rounded-xl shadow-lg shadow-green-700/20 transform transition-all active:scale-[0.98] flex justify-center gap-3 items-center text-lg";
+                    } else if (method === 'Apollo') {
+                        btn.className = "w-full bg-scooter-apollo hover:opacity-90 text-white font-bold py-4 rounded-xl shadow-lg shadow-teal-700/20 transform transition-all active:scale-[0.98] flex justify-center gap-3 items-center text-lg";
+                    } else {
+                        btn.className = "w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-purple-700/20 transform transition-all active:scale-[0.98] flex justify-center gap-3 items-center text-lg";
+                    }
+                }
+            }
+
             async function startHarvest() {
                 const handle = document.getElementById('handle-input').value;
                 const idx = document.getElementById('role-select').value;
                 if (idx === "") return alert("Select a Role first");
                 const role = rolesData[idx];
 
-                setStatus('Bot Active', 'bg-scooter-orange');
-                try {
-                    const res = await fetch('/api/harvest', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            handle,
-                            role_name: role.name,
-                            url: role.search_url,
-                            hiring_company: role.company_name,
-                            job_link: role.application_link,
-                            location: role.location,
-                            compensation: role.compensation
-                        })
-                    });
-                    if (res.ok) {
-                        alert("Harvesting Started!");
-                        connectLogs();
-                    }
-                } catch (e) { console.error(e); }
+                if (currentHarvestMethod === 'LinkedIn') {
+                    setStatus('Bot Active', 'bg-scooter-orange');
+                    try {
+                        const res = await fetch('/api/harvest', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                handle,
+                                role_name: role.name,
+                                url: document.getElementById('hv-url').value || role.search_url,
+                                hiring_company: document.getElementById('hv-company').value || role.company_name,
+                                job_link: document.getElementById('hv-link').value || role.application_link,
+                                location: document.getElementById('hv-location').value || role.location,
+                                compensation: document.getElementById('hv-compensation').value || role.compensation,
+                                source: 'LinkedIn'
+                            })
+                        });
+                        if (res.ok) { alert("LinkedIn Harvesting Started!"); connectLogs(); }
+                    } catch (e) { console.error(e); }
+                } else if (currentHarvestMethod === 'Apollo') {
+                    setStatus('Bot Active', 'bg-scooter-apollo');
+                    try {
+                        const res = await fetch('/api/apollo_harvest', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                handle,
+                                url: document.getElementById('hv-url').value,
+                                limit: parseInt(document.getElementById('hv-apollo-limit').value) || 50,
+                                pages: parseInt(document.getElementById('hv-apollo-pages').value) || 1
+                            })
+                        });
+                        if (res.ok) { alert("Apollo Discovery Started!"); connectLogs(); }
+                    } catch (e) { console.error(e); }
+                } else {
+                    setStatus('Bot Active', 'bg-purple-600');
+                    try {
+                        const res = await fetch('/api/clay_harvest', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                handle,
+                                url: document.getElementById('hv-url').value,
+                                limit: parseInt(document.getElementById('hv-clay-limit').value) || 50
+                            })
+                        });
+                        if (res.ok) { alert("Clay Enrichment Started!"); connectLogs(); }
+                    } catch (e) { console.error(e); }
+                }
             }
 
             async function startApolloHarvest() {
+                // Secondary trigger for Sidebar view
                 const handle = document.getElementById('handle-input').value;
                 const url = document.getElementById('apollo-url').value;
                 if (!url) return alert("Apollo URL required");
@@ -1589,34 +1691,26 @@
                             pages: parseInt(document.getElementById('apollo-pages').value) || 1
                         })
                     });
-                    if (res.ok) {
-                        alert("Apollo Harvest Started!");
-                        connectLogs();
-                    }
+                    if (res.ok) { alert("Apollo Harvest Started!"); connectLogs(); }
                 } catch (e) { console.error(e); }
             }
 
             async function startClayHarvest() {
+                // Secondary trigger for Sidebar view
                 const handle = document.getElementById('handle-input').value;
                 const url = document.getElementById('clay-url').value;
-                if (!handle) return alert("Account Handle (Email) is required");
                 if (!url) return alert("Clay URL is required");
-
                 setStatus('Bot Active', 'bg-purple-600');
                 try {
                     const res = await fetch('/api/clay_harvest', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            handle,
-                            url,
+                            handle, url,
                             limit: parseInt(document.getElementById('clay-limit').value) || 50
                         })
                     });
-                    if (res.ok) {
-                        alert("Clay Enrichment Started!");
-                        connectLogs();
-                    }
+                    if (res.ok) { alert("Clay Enrichment Started!"); connectLogs(); }
                 } catch (e) { console.error(e); }
             }
 
@@ -2269,6 +2363,14 @@
                                 </div>
                             </div>
                         </td>
+                        <td class="px-4 py-4 align-top text-center">
+                            <span class="px-2 py-0.5 rounded-full text-[8px] font-black uppercase border shrink-0 
+                                ${row.Source === 'Clay' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                                (row.Source === 'Apollo' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                    'bg-scooter-green/10 text-scooter-green border-scooter-green/20')}">
+                                ${row.Source || 'LinkedIn'}
+                            </span>
+                        </td>
                         <td class="px-4 py-4 align-top">
                             <div class="space-y-1.5 flex flex-col">
                                 ${row['Email'] ? `
@@ -2323,7 +2425,7 @@
                     });
                 } catch (e) {
                     console.error(e);
-                    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-red-400">Error loading data</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-400">Error loading data</td></tr>`;
                 }
             }
 

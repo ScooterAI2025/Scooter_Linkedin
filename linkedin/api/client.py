@@ -100,8 +100,14 @@ class PlaywrightLinkedinAPI:
         if not res.ok:
             body_str = res.body().decode("utf-8", errors="ignore") if isinstance(res.body(), bytes) else str(res.body())
             logger.error("API request failed → %s | Status: %s", public_identifier, res.status)
+            tracker = UsageTracker(ASSETS_DIR)
+            tracker.record_health_event(self.session.handle, "unknown_failure", details=f"API {res.status}: {body_str[:50]}")
             raise Exception(f"LinkedIn API error {res.status}: {body_str[:500]}")
 
+        # 🟢 Record API Success
+        tracker = UsageTracker(ASSETS_DIR)
+        tracker.record_health_event(self.session.handle, "success")
+        
         data = res.json()
         extracted_info = parse_linkedin_voyager_response(data, public_identifier=public_identifier)
         return extracted_info, data

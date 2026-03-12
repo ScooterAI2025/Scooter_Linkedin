@@ -130,13 +130,14 @@ async def start_harvest(request: Request):
     compensation = data.get("compensation", "")
     start_page = data.get("start_page", 1)
     pages = data.get("pages", 5)
+    source = data.get("source", "LinkedIn")
 
     if not handle or not search_url:
         return JSONResponse({"status": "error", "message": "Handle and Search URL are required."}, status_code=422)
 
     cmd = [
         sys.executable, "-u", "harvest_search.py", 
-        handle, search_url, str(start_page), str(pages), job_id, role_name, company_name, app_link, location, compensation
+        handle, search_url, str(start_page), str(pages), job_id, role_name, company_name, app_link, location, compensation, source
     ]
     
     current_process = await asyncio.create_subprocess_exec(
@@ -496,10 +497,12 @@ def get_results(handle: str = None, refresh: bool = False):
             except: pass
             
             # Detect Source
-            source = "LinkedIn"
-            role_lower = (row.get("role_name") or "").lower()
-            if "clay" in role_lower: source = "Clay"
-            elif "apollo" in role_lower: source = "Apollo"
+            source = row.get("source")
+            if not source or source == "LinkedIn":
+                role_lower = (row.get("role_name") or "").lower()
+                if "clay" in role_lower: source = "Clay"
+                elif "apollo" in role_lower: source = "Apollo"
+                else: source = "LinkedIn"
 
             # Default data from CSV (The "Constant" part)
             record = {
@@ -902,8 +905,11 @@ def get_health_summary():
         timeouts = health.get("timeout", 0)
         failures = health.get("unknown_failure", 0)
         
+        # Sessions and Rates
+        sessions = tracker.get_count(handle, "sessions_started", "daily")
         total_actions = success + captchas + restricted + timeouts + failures
         success_rate = (success / total_actions * 100) if total_actions > 0 else 100
+        challenge_rate = ((captchas + restricted) / total_actions * 100) if total_actions > 0 else 0
         
         # Determine Status
         status = "HEALTHY"
@@ -922,6 +928,8 @@ def get_health_summary():
             },
             "automation_metrics": {
                 "success_rate": round(success_rate, 1),
+                "challenge_rate": round(challenge_rate, 1),
+                "session_count": sessions,
                 "success": success,
                 "captchas": captchas,
                 "restricted": restricted,

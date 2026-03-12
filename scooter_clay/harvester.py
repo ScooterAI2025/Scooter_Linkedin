@@ -4,11 +4,16 @@ import time
 import random
 import csv
 from termcolor import colored
+from linkedin.usage_tracker import UsageTracker
+from linkedin.conf import ASSETS_DIR
 
 logger = logging.getLogger("ClayHarvester")
 
 def harvest_clay_leads(session, workbook_url, limit=10):
     page = session.page
+    tracker = UsageTracker(ASSETS_DIR)
+    tracker.record_session(session.handle)
+    
     logger.info(colored(f"📡 Navigating to Clay Workbook: {workbook_url}", "blue"))
     
     try:
@@ -161,6 +166,7 @@ def harvest_clay_leads(session, workbook_url, limit=10):
 
     # Save to main Queue
     save_to_main_queue(all_leads)
+    UsageTracker(ASSETS_DIR).record_health_event(session.handle, "success")
     return all_leads
 
 def save_to_main_queue(leads):
@@ -170,7 +176,7 @@ def save_to_main_queue(leads):
     output_path = Path("assets/inputs/harvested_urls.csv")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
-    fieldnames = ["url", "job_id", "role_name", "company_name", "app_link", "location", "compensation", "candidate_name", "candidate_pic"]
+    fieldnames = ["url", "job_id", "role_name", "company_name", "app_link", "location", "compensation", "candidate_name", "candidate_pic", "source"]
     
     # Check for existing to avoid duplicates
     existing_urls = set()
@@ -190,10 +196,11 @@ def save_to_main_queue(leads):
         count = 0
         for lead in leads:
             if lead["url"] not in existing_urls:
+                lead["source"] = "Clay"
                 writer.writerow(lead)
                 existing_urls.add(lead["url"])
                 count += 1
                 
-    logger.info(colored(f"✅ Successfully added {count} NEW leads to persistent queue.", "green", attrs=["bold"]))
+    logger.info(colored(f"✅ Successfully added {count} NEW leads to persistent queue (Source: Clay).", "green", attrs=["bold"]))
 
 from pathlib import Path
