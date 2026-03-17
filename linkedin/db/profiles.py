@@ -140,12 +140,24 @@ def save_scraped_profile(
                 summary_parts.append(f"[{p_title} @ {p_comp}]: {p_desc}")
             flat_data["all_positions_summary"] = " | ".join(summary_parts)
 
+        # Build Transcript
+        try:
+            transcript_parts = []
+            if profile_db.messages:
+                for m in profile_db.messages:
+                    ts = m.timestamp.strftime("%Y-%m-%d %H:%M") if m.timestamp else "Unknown"
+                    transcript_parts.append(f"[{ts}] {m.sender_name}: {m.text}")
+            flat_data["transcript"] = "\n".join(transcript_parts)
+        except Exception as e:
+            logger.debug(f"Could not build transcript for CSV: {e}")
+            flat_data["transcript"] = ""
+
         fields = [
             "public_id", "url", "full_name", "headline", "location", 
             "current_company_name", "current_job_title", "current_job_date_range",
             "company_description", "company_website", "company_industry", 
             "company_size", "company_headquarters", "company_specialties",
-            "summary", "about", "email", "phone", "all_positions_summary"
+            "summary", "about", "email", "phone", "all_positions_summary", "transcript"
         ]
         
         with open(csv_path, "a", newline="", encoding="utf-8") as f:
@@ -252,27 +264,57 @@ def set_profile_state(session: "AccountSession", public_identifier, new_state: s
 
 
 def save_message_sent(session: "AccountSession", public_identifier: str, message: str):
+    from linkedin.db.models import MessageEntry
     db = session.db_session
     row = db.get(Profile, public_identifier)
     if row:
         row.last_message = message
         row.last_message_at = func.now()
         row.state = ProfileState.COMPLETED.value
+        
+        # Add to history
+        entry = MessageEntry(
+            profile_id=public_identifier,
+            direction="outgoing",
+            text=message,
+            sender_name="You"
+        )
+        db.add(entry)
+        
         db.commit()
         logger.info(f"✅ Logged message sent to {public_identifier}")
+        
+        # Trigger AI Analysis
+        from linkedin.db.analytics import analyze_conversation
+        analyze_conversation(db, public_identifier)
 
 
 def save_received_message(session: "AccountSession", public_identifier: str, message: str):
+    from linkedin.db.models import MessageEntry
     from sqlalchemy import func
     db = session.db_session
     row = db.get(Profile, public_identifier)
     if row:
-        # Avoid overwriting if same message or just updating timestamp
+        # Update last state
         if row.last_received_message != message:
             row.last_received_message = message
             row.last_received_at = func.now()
+            
+            # Add to history
+            entry = MessageEntry(
+                profile_id=public_identifier,
+                direction="incoming",
+                text=message,
+                sender_name=row.profile.get("full_name") or row.profile.get("name") or "Candidate"
+            )
+            db.add(entry)
+            
             db.commit()
             logger.info(f"📩 Logged interaction from {public_identifier}: {message[:30]}...")
+
+            # Trigger AI Analysis
+            from linkedin.db.analytics import analyze_conversation
+            analyze_conversation(db, public_identifier)
 
 
 def debug_profile_preview(enriched):

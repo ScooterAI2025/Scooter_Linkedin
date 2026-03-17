@@ -152,4 +152,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        handle_to_check = sys.argv[1]
+        try:
+            check_replies_for_account(handle_to_check)
+        except Exception as e:
+            logger.error(f"Failed to check replies for @{handle_to_check}: {e}")
+    else:
+        main()

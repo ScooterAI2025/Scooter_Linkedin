@@ -250,12 +250,55 @@ def get_scraped_data():
 from fastapi.responses import FileResponse
 
 @app.get("/api/download_csv")
-def download_csv():
-    file_path = ASSETS_DIR / "inputs" / "harvested_urls.csv"
-    if not file_path.exists():
-        return JSONResponse({"status": "error", "message": "File not found"}, status_code=404)
+async def download_csv():
+    """Generates a dynamic CSV containing all intelligence (including transcripts)."""
+    try:
+        data_response = get_results()
+        records = data_response.get("data", [])
         
-    return FileResponse(file_path, media_type='text/csv', filename="harvested_candidates.csv")
+        if not records:
+            return JSONResponse({"status": "error", "message": "No data available to export"}, status_code=404)
+        
+        # Define fields and clean records for CSV
+        import csv
+        import io
+        from fastapi.responses import StreamingResponse
+        
+        # Flatten and prepare for CSV
+        output = io.StringIO()
+        fieldnames = [
+            "Full Name", "Role", "Headline", "Current Company", "Location", 
+            "Email", "Phone", "Status", "URL", "Source", "Last Message", 
+            "Last Received Message", "Transcript"
+        ]
+        writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction='ignore')
+        writer.writeheader()
+        
+        for r in records:
+            # Flatten transcript list into a single string
+            transcript_list = r.get("Transcript", [])
+            transcript_str = ""
+            for m in transcript_list:
+                ts = m.get("timestamp", "").replace("T", " ")[:16]
+                transcript_str += f"[{ts}] {m.get('sender')}: {m.get('text')}\n"
+            
+            row = r.copy()
+            row["Transcript"] = transcript_str.strip()
+            writer.writerow(row)
+            
+        output.seek(0)
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=scooter_outreach_report.csv"}
+        )
+    except Exception as e:
+        print(f"Failed to generate dynamic CSV: {e}")
+        # Fallback to static file if dynamic fails
+        file_path = ASSETS_DIR / "inputs" / "harvested_urls.csv"
+        if file_path.exists():
+            return FileResponse(file_path, media_type='text/csv', filename="harvested_candidates.csv")
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 @app.get("/api/download_detailed_csv")
 def download_detailed_csv():
@@ -436,7 +479,17 @@ def get_results(handle: str = None, refresh: bool = False):
                             "last_message": p.last_message,
                             "last_message_at": p.last_message_at,
                             "last_received_message": p.last_received_message,
-                            "last_received_at": p.last_received_at
+                            "last_received_at": p.last_received_at,
+                            "summary": p.conversation_summary,
+                            "sentiment": p.conversation_sentiment,
+                            "transcript": [
+                                {
+                                    "direction": m.direction,
+                                    "sender": m.sender_name,
+                                    "text": m.text,
+                                    "timestamp": m.timestamp.isoformat() if m.timestamp else None
+                                } for m in p.messages
+                            ]
                         }
                         
                         # Priority Logic:
@@ -446,8 +499,24 @@ def get_results(handle: str = None, refresh: bool = False):
                         
                         is_new_better = False
                         if p.public_identifier not in db_profiles_map:
-                            is_new_better = True
+                            db_profiles_map[p.public_identifier] = p_snapshot
                         else:
+                            # MERGE Transcripts: Ensure we don't lose messages if a "better" profile is found in a different DB
+                            existing = db_profiles_map[p.public_identifier]
+                            
+                            # Merge transcripts
+                            transcripts = existing.get("transcript") or []
+                            new_messages = p_snapshot.get("transcript") or []
+                            
+                            if new_messages:
+                                msg_hashes = {f"{m['direction']}|{m['text']}" for m in transcripts}
+                                for m in new_messages:
+                                    if f"{m['direction']}|{m['text']}" not in msg_hashes:
+                                        transcripts.append(m)
+                                
+                                # Re-sort merged transcripts by timestamp
+                                transcripts.sort(key=lambda x: x.get("timestamp") or "")
+                            
                             old_p = db_profiles_map[p.public_identifier]
                             # If old one has no profile but new one does
                             if p.profile and not old_p["profile"]:
@@ -467,8 +536,13 @@ def get_results(handle: str = None, refresh: bool = False):
                                     if len(str(p.profile)) > len(str(old_p["profile"])):
                                         is_new_better = True
 
-                        if is_new_better:
-                            db_profiles_map[p.public_identifier] = p_snapshot
+                            if is_new_better:
+                                # Keep the better profile data but use the merged transcripts
+                                p_snapshot["transcript"] = transcripts
+                                db_profiles_map[p.public_identifier] = p_snapshot
+                            else:
+                                # Keep existing profile data but update with merged transcripts
+                                existing["transcript"] = transcripts
                 finally:
                     session.close()
                     db_wrapper.Session.remove()
@@ -505,8 +579,18 @@ def get_results(handle: str = None, refresh: bool = False):
                 else: source = "LinkedIn"
 
             # Default data from CSV (The "Constant" part)
+            display_name = row.get("candidate_name") or "Harvested Profile"
+            if display_name == "Harvested Profile" and url and "/in/" in url:
+                try:
+                    handle = url.split("/in/")[1].split("/")[0].split("?")[0]
+                    import re
+                    handle = re.sub(r'-[0-9a-z]{6,15}$', '', handle)
+                    display_name = " ".join([w.capitalize() for w in handle.split("-") if w])
+                except:
+                    pass
+
             record = {
-                "Full Name": row.get("candidate_name") or "Harvested Profile",
+                "Full Name": display_name,
                 "Role": row.get("role_name") or "Generic",
                 "Headline": "Pending enrichment...",
                 "Current Company": row.get("company_name") or "-",
@@ -517,7 +601,8 @@ def get_results(handle: str = None, refresh: bool = False):
                 "URL": url,
                 "LinkedIn URL": url, # Explicit field for sorting/display
                 "Source": source,
-                "Picture": row.get("candidate_pic") or ""
+                "Picture": row.get("candidate_pic") or "",
+                "Transcript": []
             }
 
             # Override with DB data if enriched
@@ -624,7 +709,10 @@ def get_results(handle: str = None, refresh: bool = False):
                     "Last Message": snapshot["last_message"],
                     "Last Message At": snapshot["last_message_at"].isoformat() if snapshot["last_message_at"] else None,
                     "Last Received Message": snapshot["last_received_message"],
-                    "Last Received At": snapshot["last_received_at"].isoformat() if snapshot["last_received_at"] else None
+                    "Last Received At": snapshot["last_received_at"].isoformat() if snapshot["last_received_at"] else None,
+                    "Transcript": snapshot.get("transcript", []),
+                    "Conversation Summary": snapshot.get("summary"),
+                    "Conversation Sentiment": snapshot.get("sentiment")
                 })
                 processed_pids.add(pid)
 
@@ -736,7 +824,10 @@ def get_results(handle: str = None, refresh: bool = False):
                     "Last Message": snapshot["last_message"],
                     "Last Message At": snapshot["last_message_at"].isoformat() if snapshot.get("last_message_at") else None,
                     "Last Received Message": snapshot["last_received_message"],
-                    "Last Received At": snapshot["last_received_at"].isoformat() if snapshot.get("last_received_at") else None
+                    "Last Received At": snapshot["last_received_at"].isoformat() if snapshot.get("last_received_at") else None,
+                    "Transcript": snapshot.get("transcript", []),
+                    "Conversation Summary": snapshot.get("summary"),
+                    "Conversation Sentiment": snapshot.get("sentiment")
                 })
 
         # 5. Newest first
@@ -967,9 +1058,24 @@ def get_queue(handle: str = None):
         try:
             for row in queue_data:
                 url = row.get("url", "")
+                
+                display_name = row.get("candidate_name") or "Harvested Profile"
+                if display_name == "Harvested Profile" and url and "/in/" in url:
+                    try:
+                        handle_str = url.split("/in/")[1].split("/")[0].split("?")[0]
+                        import re
+                        handle_str = re.sub(r'-[0-9a-z]{6,15}$', '', handle_str)
+                        display_name = " ".join([w.capitalize() for w in handle_str.split("-") if w])
+                    except: pass
+                
+                row["candidate_name"] = display_name
                 row["status"] = "pending" # Default
                 row["email"] = ""
                 row["current_company"] = ""
+                row["linkedin_url"] = url
+                row["full_name"] = display_name
+                row["company"] = row.get("company_name", "")
+                row["headline"] = "Pending enrichment..."
                 
                 try:
                     pid = url_to_public_id(url)
@@ -991,10 +1097,16 @@ def get_queue(handle: str = None):
                             exp = p_data.get("experience", [])
                             if exp and isinstance(exp, list) and len(exp) > 0:
                                  row["current_company"] = exp[0].get("company", "") or exp[0].get("company_name", "")
+                                 row["company"] = row["current_company"]
+                                 
+                            row["headline"] = p_data.get("headline", "Pending enrichment...")
                             
-                            # Also pull name and pic if we have them in the DB but not in the CSV row
-                            if not row.get("candidate_name") or row["candidate_name"] == "Harvested Profile":
-                                row["candidate_name"] = p_data.get("full_name") or p_data.get("name")
+                            # Also pull name and pic if we have them in the DB
+                            db_name = p_data.get("full_name") or p_data.get("name")
+                            if db_name:
+                                row["candidate_name"] = db_name
+                                row["full_name"] = db_name
+                            
                             if not row.get("candidate_pic"):
                                 row["candidate_pic"] = p_data.get("profile_picture") or ""
                 except:

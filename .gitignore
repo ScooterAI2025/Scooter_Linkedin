@@ -22,4 +22,6 @@ logs/*.log
 
 # IDE
 .idea/
-.vscode/
+.vscode/*.db
+*.txt
+*.log

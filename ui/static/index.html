@@ -31,7 +31,9 @@
                             text: '#1F2937',     // Dark Gray Text
                             lightText: '#6B7280', // Light Gray Text
                             apollo: '#005a63',    // Apollo Teal
-                            apolloPeach: '#e0f2f1' // Apollo Light Teal
+                            apolloPeach: '#e0f2f1', // Apollo Light Teal
+                            charcoal: '#1e293b',   // Dark Charcoal
+                            charcoalHover: '#0f172a'
                         }
                     },
                     animation: {
@@ -155,6 +157,40 @@
 
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #1E293B;
+        }
+
+        .harvest-method-btn {
+            color: #64748b;
+            cursor: pointer;
+        }
+
+        .harvest-method-btn.active {
+            background-color: white;
+            color: #2E683A;
+            box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .harvest-method-btn:not(.active):hover {
+            color: #1e293b;
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes pulse-subtle {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1);
+            }
+        }
+
+        .animate-pulse-subtle {
+            animation: pulse-subtle 2s infinite ease-in-out;
         }
     </style>
 </head>
@@ -531,7 +567,7 @@
                                 Usage: 0/25
                             </div>
                             <button id="btn-start-harvest" onclick="startHarvest()"
-                                class="w-full bg-scooter-green hover:bg-scooter-greenHover text-white font-bold py-4 rounded-xl shadow-lg shadow-green-700/20 transform transition-all active:scale-[0.98] flex justify-center gap-3 items-center text-lg">
+                                class="w-full bg-scooter-green hover:opacity-90 text-white font-bold py-4 rounded-xl shadow-lg shadow-green-700/20 transform transition-all active:scale-[0.98] flex justify-center gap-3 items-center text-lg">
                                 <i class="fa-solid fa-play"></i> Start <span id="harvest-method-label">LinkedIn</span>
                                 Harvesting
                             </button>
@@ -545,12 +581,12 @@
                         <h3 class="text-lg font-bold text-gray-800">Harvested Candidates</h3>
                         <div class="flex space-x-2">
                             <button onclick="loadScrapedData()"
-                                class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-gray-600 font-bold transition-colors">
-                                <i class="fas fa-sync-alt mr-1"></i> Refresh
+                                class="text-xs bg-gray-900 hover:bg-black px-4 py-2 rounded-xl text-white font-black tracking-wide transition-colors flex items-center shadow-lg shadow-gray-200/50">
+                                <i class="fas fa-sync-alt mr-2 text-scooter-green text-[10px]"></i> REFRESH
                             </button>
                             <a href="/api/download_csv" target="_blank"
-                                class="text-xs bg-scooter-charcoal hover:bg-black px-3 py-1.5 rounded-lg text-white font-bold flex items-center transition-colors">
-                                <i class="fas fa-download mr-1"></i> CSV
+                                class="text-xs bg-gray-900 hover:bg-black px-4 py-2 rounded-xl text-white font-black tracking-wide flex items-center transition-colors shadow-lg shadow-gray-200/50">
+                                <i class="fas fa-download mr-2 text-scooter-orange text-[10px]"></i> DOWNLOAD CSV
                             </a>
                         </div>
                     </div>
@@ -566,6 +602,7 @@
                                     <th class="px-4 py-3 text-center">Source</th>
                                     <th class="px-4 py-3">Contact Info</th>
                                     <th class="px-4 py-3 hidden lg:table-cell">Key Experience</th>
+                                    <th class="px-4 py-3 text-center">Status</th>
                                     <th class="px-4 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -1102,7 +1139,7 @@
                         </button>
                         <button onclick="loadResults()"
                             class="bg-scooter-charcoal hover:bg-black text-white px-4 py-2 rounded-xl text-[11px] font-bold transition-all shadow-sm flex items-center gap-2">
-                            <i class="fa-solid fa-rotate text-scooter-green"></i> REFRESH
+                            <i class="fa-solid fa-rotate text-white"></i> REFRESH
                         </button>
                         <button onclick="checkRepliesNow()"
                             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-[11px] font-bold transition-all shadow-sm flex items-center gap-2">
@@ -1180,13 +1217,13 @@
                                         class="p-4 text-[10px] font-black text-scooter-green uppercase tracking-widest w-[12%] bg-green-50/50">
                                         Location</th>
                                     <th
-                                        class="p-4 text-[10px] font-black text-purple-600 uppercase tracking-widest w-[16%] bg-purple-50/50">
+                                        class="p-4 text-[10px] font-black text-purple-600 uppercase tracking-widest w-[14%] bg-purple-50/50">
                                         Experience</th>
                                     <th
-                                        class="p-4 text-[10px] font-black text-gray-500 uppercase tracking-widest w-[12%] bg-gray-50/50 text-center">
+                                        class="p-4 text-[10px] font-black text-gray-500 uppercase tracking-widest w-[11%] bg-gray-50/50 text-center">
                                         Status</th>
                                     <th
-                                        class="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-[9%] text-right bg-gray-50/50">
+                                        class="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-[12%] text-right bg-gray-50/50">
                                         Actions</th>
                                 </tr>
                             </thead>
@@ -1214,9 +1251,9 @@
                     </div>
                     <div class="flex items-center gap-3">
                         <button onclick="runCheckpoint()"
-                            class="bg-scooter-charcoal hover:bg-black text-white px-5 py-2.5 rounded-xl text-sm font-black tracking-widest transition-all shadow-xl shadow-gray-400/20 flex items-center group">
+                            class="bg-gray-900 shadow-2xl hover:bg-black text-white px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all flex items-center group">
                             <i
-                                class="fa-solid fa-user-shield mr-2 text-scooter-orange group-hover:scale-110 transition-transform"></i>
+                                class="fa-solid fa-user-shield mr-2.5 text-scooter-orange group-hover:scale-110 transition-transform"></i>
                             MANUAL AUTH CHECKPOINT
                         </button>
                         <button onclick="loadHealthReport()"
@@ -1280,6 +1317,7 @@
             let allPoolData = [];
             let eventSource = null;
             let autoCheckInterval = null;
+            let currentResults = [];
 
             // --- UTILS & UI HELPERS ---
             function switchTab(tab) {
@@ -1730,22 +1768,33 @@
                     const res = await fetch(`/api/usage?handle=${encodeURIComponent(handle)}&t=${Date.now()}`);
                     const data = await res.json();
 
-                    const updateMeter = (idPrefix, current, limit) => {
+                    const updateMeter = (idPrefix, usageData) => {
+                        if (!usageData) return;
+                        
                         const text = document.getElementById(`${idPrefix}-usage-text`);
                         const bar = document.getElementById(`${idPrefix}-usage-bar`);
-                        if (text && bar) {
-                            text.innerText = `${current} / ${limit}`;
-                            const pct = Math.min(100, (current / limit) * 100);
+                        if (text && bar && usageData.daily) {
+                            text.innerText = `${usageData.daily.count}/${usageData.daily.limit}`;
+                            const pct = usageData.daily.limit > 0 ? Math.min(100, (usageData.daily.count / usageData.daily.limit) * 100) : 0;
                             bar.style.width = `${pct}%`;
                         }
+
+                        const ses = document.getElementById(`${idPrefix}-session-lim`);
+                        const wk = document.getElementById(`${idPrefix}-weekly-cnt`);
+                        const mo = document.getElementById(`${idPrefix}-monthly-cnt`);
+                        
+                        if (ses && usageData.session) ses.innerText = usageData.session.limit;
+                        if (wk && usageData.weekly) wk.innerText = `${usageData.weekly.count}/${usageData.weekly.limit}`;
+                        if (mo && usageData.monthly) mo.innerText = `${usageData.monthly.count}/${usageData.monthly.limit}`;
                     };
-                    updateMeter('enrich', data.count || 0, data.limit || 25);
-                    updateMeter('harvest', data.harvest_pages || 0, data.harvest_limit || 50);
-                    updateMeter('search', data.search_count || 0, data.search_limit || 100);
+
+                    updateMeter('enrich', data.enrich_profiles);
+                    updateMeter('harvest', data.harvested_cards);
+                    updateMeter('search', data.people_searches);
 
                     const badge = document.getElementById('account-status-badge');
                     if (badge) {
-                        badge.innerText = "Active";
+                        badge.innerText = data.account_meta ? data.account_meta.status : "Active";
                         badge.className = "text-[7px] font-black px-1.5 py-0.5 rounded-md bg-green-100 text-green-700 tracking-widest uppercase";
                     }
                 } catch (e) {
@@ -2154,16 +2203,24 @@
                             '<div class="text-[10px] text-gray-400 italic">No experience data</div>'}
                                 </div>
                             </td>
-                            <td class="p-4 w-[12%] text-center">
+                            <td class="p-4 w-[11%] text-center">
                                 <span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase border ${statusClass}">${s}</span>
                             </td>
-                            <td class="p-4 w-[9%] text-right flex items-center justify-end gap-1">
-                                <button onclick="showCandidateDetails('${row.URL}')" class="p-2 bg-gray-50 hover:bg-scooter-green/10 text-gray-400 hover:text-scooter-green rounded-lg transition-all" title="View Full Details">
-                                    <i class="fa-solid fa-eye text-[10px]"></i>
-                                </button>
-                                <button onclick="alert('Coming soon: Direct Message')" class="p-2 bg-gray-50 hover:bg-scooter-green/10 text-gray-400 hover:text-scooter-green rounded-lg transition-all" title="Send Message">
-                                    <i class="fa-solid fa-paper-plane text-[10px]"></i>
-                                </button>
+                            <td class="p-4 w-[12%] text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    ${row['Transcript'] && row['Transcript'].length > 0 ? `
+                                    <button onclick="showConversation('${row['URL'] || row['LinkedIn URL']}')" 
+                                        class="p-2 bg-scooter-orange/10 text-scooter-orange border border-scooter-orange/20 rounded-lg shadow-sm transition-all animate-pulse-subtle" 
+                                        title="View Outreach Transcript">
+                                        <i class="fa-solid fa-message text-[10px]"></i>
+                                    </button>` : ''}
+                                    <button onclick="showCandidateDetails('${row.URL}')" class="p-2 bg-gray-50 hover:bg-scooter-green/10 text-gray-400 hover:text-scooter-green rounded-lg transition-all" title="View Full Details">
+                                        <i class="fa-solid fa-eye text-[10px]"></i>
+                                    </button>
+                                    <button onclick="alert('Coming soon: Direct Message')" class="p-2 bg-gray-50 hover:bg-scooter-green/10 text-gray-400 hover:text-scooter-green rounded-lg transition-all" title="Send Message">
+                                        <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                                    </button>
+                                </div>
                             </td>
                         `;
                     tbody.appendChild(tr);
@@ -2307,18 +2364,26 @@
             async function loadScrapedData() {
                 const handle = document.getElementById('handle-input').value;
                 const tbody = document.getElementById('scraped-data-body');
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-400">Loading DB...</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-400">Loading DB...</td></tr>`;
 
                 try {
                     const res = await fetch(`/api/results?handle=${handle || ''}`);
                     const json = await res.json();
                     const data = json.data || [];
+                    currentResults = data;
+
+                    // Debug: Check for transcripts
+                    const withTranscripts = data.filter(r => r['Transcript'] && r['Transcript'].length > 0);
+                    console.log(`[UI] Loaded ${data.length} results. Profiles with transcripts: ${withTranscripts.length}`);
+                    if (withTranscripts.length > 0) {
+                        console.log("[UI] Sample transcript profile:", withTranscripts[0]['Full Name']);
+                    }
 
                     tbody.innerHTML = '';
 
                     if (data.length === 0) {
                         tbody.innerHTML = `<tr>
-                        <td colspan="4" class="text-center py-8 text-gray-400 italic">No enriched data found yet. Launch a campaign!</td>
+                        <td colspan="7" class="text-center py-8 text-gray-400 italic">No enriched data found yet. Launch a campaign!</td>
                     </tr>`;
                         return;
                     }
@@ -2408,13 +2473,21 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="px-4 py-4 text-right align-top shrink-0">
+                        <td class="px-4 py-4 text-center align-middle shrink-0 w-[10%]">
+                            <span class="text-[8px] font-black uppercase px-2 py-1 rounded-full ${statusClass} border tracking-tighter shadow-sm whitespace-nowrap">${row['Status']}</span>
+                        </td>
+                        <td class="px-4 py-4 text-right align-top shrink-0 w-[15%]">
                             <div class="flex flex-col items-end gap-3">
-                                <div class="flex items-center gap-1">
+                                <div class="flex items-center gap-2">
+                                    ${row['Transcript'] && row['Transcript'].length > 0 ? `
+                                    <button onclick="showConversation('${row['URL'] || row['LinkedIn URL']}')" 
+                                        class="p-1.5 bg-scooter-orange/10 text-scooter-orange border border-scooter-orange/20 rounded-lg shadow-sm transition-all animate-pulse-subtle" 
+                                        title="View Outreach Transcript">
+                                        <i class="fa-solid fa-message text-[10px]"></i>
+                                    </button>` : ''}
                                     <button onclick="showCandidateDetails('${row['URL'] || row['LinkedIn URL']}')" class="p-1.5 bg-white hover:bg-scooter-green/10 text-gray-300 hover:text-scooter-green border border-gray-100 rounded-lg shadow-sm transition-all" title="Review Intelligence">
                                         <i class="fa-solid fa-eye text-[9px]"></i>
                                     </button>
-                                    <span class="text-[8px] font-black uppercase px-2 py-1 rounded-full ${statusClass} border tracking-tighter shadow-sm">${row['Status']}</span>
                                 </div>
                                 <a href="${row['URL']}" target="_blank" class="flex items-center gap-2 text-[10px] font-bold text-gray-400 hover:text-scooter-green transition-all bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm hover:shadow-md">
                                     PROFILE <i class="fa-solid fa-external-link-alt text-[9px]"></i>
@@ -2427,6 +2500,74 @@
                     console.error(e);
                     tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-400">Error loading data</td></tr>`;
                 }
+            }
+
+            // --- CONVERSATION VIEW ---
+            function showConversation(url) {
+                let row = currentResults.find(r => (r['URL'] === url || r['LinkedIn URL'] === url));
+                if (!row) {
+                    row = allPoolData.find(r => (r['URL'] === url || r['LinkedIn URL'] === url));
+                }
+                if (!row) return;
+
+                const body = document.getElementById('conversation-body');
+                body.innerHTML = '';
+
+                const transcript = row['Transcript'] || [];
+                if (transcript.length === 0) {
+                    body.innerHTML = '<div class="text-center py-20 text-gray-400 italic">No message history found for this candidate yet.</div>';
+                } else {
+                    transcript.forEach(m => {
+                        const isYou = m.direction === 'outgoing';
+                        const time = new Date(m.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+                        body.innerHTML += `
+                            <div class="flex flex-col ${isYou ? 'items-end' : 'items-start'} gap-1 animate-fade-in mb-6">
+                                <div class="flex items-center gap-2 mb-1 ${isYou ? 'flex-row-reverse' : ''}">
+                                    <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">${isYou ? 'You' : m.sender}</span>
+                                    <span class="text-[9px] text-gray-300 font-medium">• ${time}</span>
+                                </div>
+                                <div class="max-w-[85%] px-5 py-3.5 rounded-3xl text-sm leading-relaxed shadow-sm ${isYou ? 'bg-scooter-green text-white rounded-tr-none' : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'}">
+                                    ${m.text}
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                // AI Insights
+                const summaryDiv = document.getElementById('conversation-ai-insights');
+                const badge = document.getElementById('conv-sentiment');
+                const text = document.getElementById('conv-summary');
+
+                if (row['Conversation Summary'] || row['Conversation Sentiment']) {
+                    summaryDiv.classList.remove('hidden');
+                    summaryDiv.classList.add('flex');
+                    badge.innerText = row['Conversation Sentiment'] || 'UNKNOWN';
+                    text.innerText = row['Conversation Summary'] || 'No summary available.';
+
+                    // Style the sentiment badge based on content
+                    const sentStr = (row['Conversation Sentiment'] || '').toLowerCase();
+                    badge.className = 'px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ';
+                    if (sentStr.includes('interested') && !sentStr.includes('not')) {
+                        badge.className += 'bg-green-100 text-green-700 border-green-200';
+                    } else if (sentStr.includes('not interested') || sentStr.includes('hostile')) {
+                        badge.className += 'bg-red-100 text-red-700 border-red-200';
+                    } else {
+                        badge.className += 'bg-orange-100 text-orange-600 border-orange-200';
+                    }
+                } else {
+                    summaryDiv.classList.add('hidden');
+                    summaryDiv.classList.remove('flex');
+                }
+
+                document.getElementById('conversation-modal').classList.remove('hidden');
+                document.getElementById('conversation-modal').classList.add('flex');
+            }
+
+            function closeConversationModal() {
+                document.getElementById('conversation-modal').classList.add('hidden');
+                document.getElementById('conversation-modal').classList.remove('flex');
             }
 
             // --- REVIEW QUEUE ---
@@ -2607,6 +2748,46 @@
                     <button
                         class="px-8 py-3 rounded-2xl bg-scooter-green text-white text-xs font-black uppercase tracking-widest hover:shadow-lg hover:shadow-scooter-green/30 transition-all">Select
                         for Campaign</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conversation Modal -->
+        <div id="conversation-modal"
+            class="fixed inset-0 bg-gray-900/60 backdrop-blur-md hidden items-center justify-center z-[110] p-4 animate-in fade-in duration-300">
+            <div
+                class="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col border border-white translate-y-0 animate-in slide-in-from-bottom-8 duration-500">
+                <div
+                    class="flex items-start justify-between p-8 border-b border-gray-100 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+                    <div class="flex flex-col gap-3 max-w-[80%]">
+                        <div class="flex items-center gap-3">
+                            <div class="w-1.5 h-6 bg-scooter-orange rounded-full"></div>
+                            <h3 class="text-xl font-black text-gray-900 tracking-tight">Outreach Transcript</h3>
+                        </div>
+                        <!-- AI Insights Banner -->
+                        <div id="conversation-ai-insights"
+                            class="hidden flex-col gap-1.5 bg-gradient-to-r from-orange-50/80 to-transparent p-3 rounded-xl border-l-[3px] border-orange-300">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-wand-magic-sparkles text-orange-400 text-xs"></i>
+                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">AI
+                                    Analytics</span>
+                                <span id="conv-sentiment"></span>
+                            </div>
+                            <div id="conv-summary" class="text-sm font-medium text-gray-700 leading-relaxed pl-5"></div>
+                        </div>
+                    </div>
+                    <button onclick="closeConversationModal()"
+                        class="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-gray-900 flex items-center justify-center transition-all group shrink-0">
+                        <i class="fa-solid fa-xmark group-hover:rotate-90 transition-transform"></i>
+                    </button>
+                </div>
+                <div id="conversation-body" class="flex-1 overflow-y-auto p-10 custom-scrollbar bg-gray-50/30">
+                    <!-- Populated via JS -->
+                </div>
+                <div class="p-6 bg-white border-t border-gray-100 flex justify-end rounded-b-[40px]">
+                    <button onclick="closeConversationModal()"
+                        class="px-8 py-3 rounded-2xl bg-gray-900 text-white text-xs font-black uppercase tracking-widest hover:bg-black transition-all">Close
+                        History</button>
                 </div>
             </div>
         </div>

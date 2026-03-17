@@ -1,7 +1,5 @@
-# linkedin/db_models.py
-
-from sqlalchemy import Column, String, JSON, DateTime, Boolean, Integer
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, String, JSON, DateTime, Boolean, Integer, ForeignKey
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 
 Base = declarative_base()
@@ -34,3 +32,24 @@ class Profile(Base):
     # Messaging history (Incoming)
     last_received_message = Column(String, nullable=True)
     last_received_at = Column(DateTime, nullable=True)
+
+    # Conversation Analytics (AI Generated)
+    conversation_summary = Column(String, nullable=True)
+    conversation_sentiment = Column(String, nullable=True)
+
+    # Relationships
+    messages = relationship("MessageEntry", back_populates="profile", cascade="all, delete-orphan", order_by="MessageEntry.timestamp")
+
+
+class MessageEntry(Base):
+    __tablename__ = 'message_history'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    profile_id = Column(String, ForeignKey('profiles.public_identifier'), nullable=False)
+    direction = Column(String, nullable=False)  # 'incoming' or 'outgoing'
+    sender_name = Column(String, nullable=True)
+    text = Column(String, nullable=False)
+    timestamp = Column(DateTime, server_default=func.now(), nullable=False)
+
+    # Relationships
+    profile = relationship("Profile", back_populates="messages")
