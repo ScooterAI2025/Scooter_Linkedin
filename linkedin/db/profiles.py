@@ -24,13 +24,14 @@ def add_profile_urls(session: "AccountSession", urls: List[str]):
         return
 
     db = session.db_session
-    to_insert = [{"public_identifier": pid} for pid in public_ids]
-    db.execute(
-        Profile.__table__.insert()
-        .prefix_with("OR IGNORE")
-        .values(to_insert)
-    )
-    db.commit()
+    
+    # Cloud Postgres & SQLite friendly insert
+    existing_ids = {row.public_identifier for row in db.query(Profile.public_identifier).filter(Profile.public_identifier.in_(public_ids)).all()}
+    new_ids = public_ids - existing_ids
+    
+    if new_ids:
+        db.bulk_save_objects([Profile(public_identifier=pid, state=ProfileState.DISCOVERED.value) for pid in new_ids])
+        db.commit()
 
     logger.debug(f"Discovered {len(public_ids)} unique LinkedIn profiles")
 

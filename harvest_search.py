@@ -381,6 +381,15 @@ def harvest_search_results(
                         app_link, location, compensation, 
                         item["name"], item["picture"], source
                     ])
+            
+            # --- NEW: Cloud SQL Injection ---
+            try:
+                from linkedin.db.profiles import add_profile_urls
+                # Push into PostgreSQL database as DISCOVERED state so the UI sees them
+                add_profile_urls(session, [item["url"] for item in new_urls_on_page])
+                logger.debug(f"Pushed {len(new_urls_on_page)} harvested profiles to Cloud Database!")
+            except Exception as e:
+                logger.error(f"Failed to push harvested profiles to DB: {e}")
 
         
         # 🟢 Scroll to Bottom to find Next Button
