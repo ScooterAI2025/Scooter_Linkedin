@@ -124,12 +124,21 @@ def process_profile_row(
 def process_profiles(handle, session, profiles: list[dict], enrich_only: bool = False, limit: int = 20):
     from linkedin.usage_tracker import UsageTracker
     from linkedin.conf import ASSETS_DIR
+    from linkedin.db.jobs import create_job, update_job_progress, end_job
     
     tracker = UsageTracker(ASSETS_DIR)
     tracker.record_session(handle)
+    
+    # Create the job in SQL
+    job_type = "enrich_only" if enrich_only else "campaign"
+    job_id = create_job(session.db_session, handle, job_type, limit)
+    
     perform_connections = True
     MAX_ACTIONS = limit
     actions_count = 0 
+    
+    error_msg = None
+    stop_status = "completed"
 
     for simple_profile in profiles:
         # Check overall daily & monthly safety (persisted)
@@ -167,6 +176,19 @@ def process_profiles(handle, session, profiles: list[dict], enrich_only: bool = 
                      session.profiles_scraped_this_batch += 1
                      tracker.increment(handle, "enrich_profiles")
                      tracker.record_health_event(handle, "success")
+                     
+                     update_job_progress(session.db_session, job_id, actions_count)
+                     
+                     # 🚨 FORENSIC TRACKING: Stamp the job ID onto the candidate
+                     try:
+                         from linkedin.db.models import Profile
+                         db_prof = session.db_session.query(Profile).filter_by(public_identifier=simple_profile.get("public_identifier")).first()
+                         if db_prof:
+                             db_prof.last_job_id = job_id
+                             session.db_session.commit()
+                     except Exception as e:
+                         logger.debug(f"Failed to tag job ID: {e}")
+                     
                      logger.info(f"Action count: {actions_count}/{MAX_ACTIONS}")
 
                 continue_same_profile = bool(profile)
@@ -190,18 +212,23 @@ def process_profiles(handle, session, profiles: list[dict], enrich_only: bool = 
                 logger.warning(colored(f"🚨 AUTH FAILURE (401): {e}", "red", attrs=["bold"]))
                 logger.info(colored("🛡️ TRIGGERING MANUAL LOGIN POPUP...", "cyan", attrs=["bold"]))
                 
-                # Pop the manual browser
+                # Pop the manual browser safely
+                session.close_browser()
                 if manual_login_checkpoint(handle):
                     logger.info(colored("✅ Manual Login Successful! Rebooting bot...", "green", attrs=["bold"]))
-                    session.reboot_browser()
+                    session.ensure_browser()
                     continue # This RETRIES the 'while continue_same_profile' loop
                 else:
                     logger.error(colored("❌ Manual Login Failed. Stopping campaign.", "red", attrs=["bold"]))
-                    return
+                    stop_status = "failed"
+                    error_msg = "Manual Login Failed"
+                    break
             except DetectionError as e:
                 # Note: utils.py already records health event and alerts for these
                 logger.error(colored(f"🛑 DETECTION ERROR: {e}. Stopping all operations.", "red", attrs=["bold"]))
-                return
+                stop_status = "failed"
+                error_msg = f"Detection Error: {e}"
+                break
             except PlaywrightTimeoutError as e:
                 logger.error(f"Timeout processing {simple_profile['public_identifier']}: {e}")
                 tracker.record_health_event(handle, "timeout", details=str(e))
@@ -210,3 +237,5 @@ def process_profiles(handle, session, profiles: list[dict], enrich_only: bool = 
                 logger.error(f"Unexpected failure for {simple_profile['public_identifier']}: {e}", exc_info=True)
                 tracker.record_health_event(handle, "unknown_failure", details=str(e))
                 continue_same_profile = False
+
+    end_job(session.db_session, job_id, stop_status, error_msg)

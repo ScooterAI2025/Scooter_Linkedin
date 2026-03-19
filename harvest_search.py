@@ -12,6 +12,7 @@ from linkedin.conf import ASSETS_DIR
 from linkedin.sessions.registry import get_session
 from linkedin.navigation.utils import goto_page
 from linkedin.usage_tracker import UsageTracker
+from linkedin.navigation.exceptions import AuthenticationError
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
@@ -67,21 +68,45 @@ def harvest_search_results(
 
     session = get_session(handle)
     tracker.record_session(handle) # 🟢 Record session start
-    session.ensure_browser()
-    page = session.page
-
-    # Navigate to the initial search URL
-    if start_page > 1:
-        separator = "&" if "?" in search_url else "?"
-        search_url = f"{search_url}{separator}page={start_page}"
+    try:
+        session.ensure_browser()
+        page = session.page
         
-    goto_page(
-        session,
-        action=lambda: page.goto(search_url),
-        expected_url_pattern="/search/results/",
-        error_message="Failed to load search results",
-        to_scrape=False # We handle scraping manually here
-    )
+        # Navigate to the initial search URL
+        if start_page > 1:
+            separator = "&" if "?" in search_url else "?"
+            search_url = f"{search_url}{separator}page={start_page}"
+            
+        goto_page(
+            session,
+            action=lambda: page.goto(search_url),
+            expected_url_pattern="/search/results/",
+            error_message="Failed to load search results",
+            to_scrape=False # We handle scraping manually here
+        )
+    except AuthenticationError as e:
+        from linkedin.navigation.login import manual_login_checkpoint
+        logger.warning(colored(f"🚨 AUTH FAILURE (401): {e}", "red", attrs=["bold"]))
+        logger.info(colored("🛡️ TRIGGERING MANUAL LOGIN POPUP...", "cyan", attrs=["bold"]))
+        
+        # We MUST close the background playwright before opening the manual login window
+        # otherwise Playwright gets angry about asyncio loops
+        session.close_browser()
+        
+        if manual_login_checkpoint(handle):
+            logger.info(colored("✅ Manual Login Successful! Rebooting bot...", "green", attrs=["bold"]))
+            session.ensure_browser()
+            page = session.page
+            goto_page(
+                session,
+                action=lambda: page.goto(search_url),
+                expected_url_pattern="/search/results/",
+                error_message="Failed to load search results",
+                to_scrape=False
+            )
+        else:
+            logger.error(colored("❌ Manual Login Failed. Stopping campaign.", "red", attrs=["bold"]))
+            return
 
     # 🟢 Increment search usage only AFTER successful navigation to results
     tracker.increment(handle, "people_searches")

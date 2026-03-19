@@ -50,13 +50,26 @@ def main():
         logger.error(colored("❌ Failed to establish Apollo Session.", "red"))
         sys.exit(1)
         
+    # Start SQL Job Tracking
+    from linkedin.db.engine import Database
+    from linkedin.db.jobs import create_job, update_job_progress, end_job
+    
+    db = Database.from_handle(args.handle)
+    db_session = db.get_session()
+    job_id = create_job(db_session, args.handle, "apollo_harvest", expected_limit=args.limit)
+        
     try:
         # Run Harvester
-        harvest_apollo_leads(session, args.search_url, pages=args.pages)
-        logger.info(colored("✨ Apollo Harvest Task Completed Successfully.", "green", attrs=["bold"]))
+        leads = harvest_apollo_leads(session, args.search_url, pages=args.pages)
+        if leads:
+             update_job_progress(db_session, job_id, len(leads))
+        end_job(db_session, job_id, "completed")
+        logger.info(colored(f"✨ Apollo Harvest Task Completed Successfully. Captured {len(leads) if leads else 0}.", "green", attrs=["bold"]))
     except Exception as e:
+        end_job(db_session, job_id, "failed", str(e))
         logger.error(f"Critical Failure during harvest: {e}")
     finally:
+        db.Session.remove()
         manager.close()
 
 if __name__ == "__main__":

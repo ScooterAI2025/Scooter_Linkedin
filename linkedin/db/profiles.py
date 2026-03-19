@@ -326,23 +326,49 @@ def debug_profile_preview(enriched):
 def get_updated_at_df(session: "AccountSession", public_identifiers: List[str]) -> pd.DataFrame:
     """
     Return a DataFrame with public_identifier and updated_at for existing profiles.
+    GLOBAL CHECK: Scans ALL account databases to prevent overlapping outreach!
     """
     if not public_identifiers:
         return pd.DataFrame(columns=["public_identifier", "updated_at"])
 
-    db = session.db_session
+    from linkedin.conf import DATA_DIR
+    from linkedin.db.engine import Database
+    import glob
+    import os
 
-    results = (
-        db.query(Profile.public_identifier, Profile.updated_at)
-        .filter(Profile.public_identifier.in_(public_identifiers))
-        .all()
-    )
+    all_results = []
+    
+    # 1. Glob all .db files in assets/data
+    db_files = glob.glob(str(DATA_DIR / "*.db"))
+    
+    # 2. Query each DB for these specific public_identifiers
+    for db_path in db_files:
+        try:
+            if not os.path.isfile(db_path): continue
+            
+            # Temporary session for this DB
+            temp_db = Database(db_path)
+            s = temp_db.get_session()
+            rows = (
+                s.query(Profile.public_identifier, Profile.updated_at)
+                .filter(Profile.public_identifier.in_(public_identifiers))
+                .all()
+            )
+            if rows:
+                all_results.extend(rows)
+            s.close()
+        except Exception as e:
+            logger.debug(f"Failed to scan global DB {db_path}: {e}")
 
-    if not results:
+    if not all_results:
         return pd.DataFrame(columns=["public_identifier", "updated_at"])
 
-    df = pd.DataFrame(results, columns=["public_identifier", "updated_at"])
+    df = pd.DataFrame(all_results, columns=["public_identifier", "updated_at"])
+    
+    # Since a profile might exist in multiple DBs, group by ID and keep the newest date
+    df = df.groupby("public_identifier", as_index=False).agg({"updated_at": "max"})
 
-    logger.debug(f"Retrieved updated_at for {len(df)} profiles from DB")
+    if len(df) > 0:
+        logger.info(colored(f"🛡️ GLOBAL SAFETY: Found {len(df)} profiles already processed across other accounts!", "magenta"))
 
     return df

@@ -1129,7 +1129,7 @@ async def save_queue(request: Request):
     # Ensure directory exists (it should, but safety first)
     HARVEST_FILE.parent.mkdir(parents=True, exist_ok=True)
     
-    fieldnames = ["url", "job_id", "role_name", "company_name", "app_link", "location", "compensation", "candidate_name", "candidate_pic"]
+    fieldnames = ["url", "job_id", "role_name", "company_name", "app_link", "location", "compensation", "candidate_name", "candidate_pic", "source"]
     
     with open(HARVEST_FILE, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')

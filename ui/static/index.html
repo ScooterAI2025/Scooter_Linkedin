@@ -291,6 +291,8 @@
                     class="w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-green-50/50 transition-all text-gray-700 whitespace-nowrap">
                     <i class="fa-solid fa-users text-lg text-scooter-green"></i>
                     <span class="text-sm font-bold">View Candidates</span>
+                    <span id="candidates-badge"
+                        class="hidden bg-scooter-green text-white text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto">0</span>
                 </button>
                 <button onclick="switchTab('health')" id="tab-health"
                     class="w-full text-left px-5 py-4 rounded-xl flex items-center gap-3 hover:bg-red-50/50 transition-all text-gray-700 whitespace-nowrap">
@@ -1904,16 +1906,25 @@
             }
 
             // --- RESULTS / CANDIDATES ---
-            async function loadResults() {
+            async function loadResults(silent = false) {
                 const handle = document.getElementById('handle-input').value;
                 const tbody = document.getElementById('results-table-body');
                 if (!tbody) return;
-                tbody.innerHTML = '<tr><td colspan="7" class="p-10 text-center"><i class="fas fa-spinner fa-spin mr-2"></i>Loading Pool Data...</td></tr>';
+                
+                if (!silent) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="p-10 text-center"><i class="fas fa-spinner fa-spin mr-2"></i>Loading Pool Data...</td></tr>';
+                }
 
                 try {
                     const res = await fetch(`/api/results?handle=${handle}&refresh=true`);
                     const json = await res.json();
                     allPoolData = json.data || [];
+                    
+                    const badge = document.getElementById('candidates-badge');
+                    if (badge) {
+                        badge.textContent = allPoolData.length;
+                        badge.classList.toggle('hidden', allPoolData.length === 0);
+                    }
 
                     // Role filter
                     const roleSelect = document.getElementById('filter-role');
@@ -2571,9 +2582,13 @@
             }
 
             // --- REVIEW QUEUE ---
-            async function loadQueue() {
+            async function loadQueue(silent = false) {
                 const handle = document.getElementById('handle-input').value;
                 const badge = document.getElementById('queue-badge');
+                if (!silent) {
+                    const tbody = document.getElementById('queue-body');
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="p-10 text-center"><i class="fas fa-spinner fa-spin mr-2 text-scooter-green"></i>Loading...</td></tr>';
+                }
                 try {
                     const res = await fetch(`/api/queue?handle=${encodeURIComponent(handle)}`);
                     const data = await res.json();
@@ -2717,8 +2732,12 @@
                 connectLogs();
                 loadRoleSelector();
                 loadUsage();
+                loadQueue();
+                loadResults();
                 setInterval(checkBotStatus, 3000);
                 setInterval(loadUsage, 15000);
+                setInterval(() => loadQueue(true), 15000);
+                setInterval(() => loadResults(true), 15000);
             });
         </script>
         <!-- Candidate Details Modal -->

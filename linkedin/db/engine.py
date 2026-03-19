@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 
 from linkedin.api.cloud_sync import sync_profiles
 from linkedin.conf import get_account_config
-from linkedin.db.models import Base, Profile
+from linkedin.db.models import Base, Profile, JobStatus
 from linkedin.navigation.enums import ProfileState
 
 logger = logging.getLogger(__name__)
@@ -85,6 +85,10 @@ class Database:
             if 'last_received_at' not in columns:
                 logger.info("Adding column 'last_received_at' to profiles table")
                 conn.execute(text("ALTER TABLE profiles ADD COLUMN last_received_at DATETIME"))
+                conn.commit()
+            if 'last_job_id' not in columns:
+                logger.info("Adding column 'last_job_id' to profiles table")
+                conn.execute(text("ALTER TABLE profiles ADD COLUMN last_job_id INTEGER"))
                 conn.commit()
 
     def _sync_all_unsynced_profiles(self):

@@ -100,6 +100,29 @@ class AccountSession:
             logger.error(f"Failed to init browser: {e}")
             raise e
 
+    def close_browser(self):
+        if self.page:
+            try: self.page.close()
+            except: pass
+        if self.context:
+            try: self.context.close()
+            except: pass
+        if self.browser:
+            try: self.browser.close()
+            except: pass
+        if self.playwright:
+            try: self.playwright.stop()
+            except: pass
+            
+        self.page = None
+        self.context = None
+        self.browser = None
+        self.playwright = None
+
+    def reboot_browser(self):
+        self.close_browser()
+        self.ensure_browser()
+
     def wait(self, min_delay=None, max_delay=None, to_scrape=OPPORTUNISTIC_SCRAPING, long_pause=False):
         """
         Smart Wait:

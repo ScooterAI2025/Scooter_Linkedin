@@ -25,6 +25,9 @@ class Profile(Base):
 
     state = Column(String, nullable=False, default="discovered")
     
+    # Forensic Analytics
+    last_job_id = Column(Integer, nullable=True)
+    
     # Messaging history (Outgoing)
     last_message = Column(String, nullable=True)
     last_message_at = Column(DateTime, nullable=True)
@@ -53,3 +56,18 @@ class MessageEntry(Base):
 
     # Relationships
     profile = relationship("Profile", back_populates="messages")
+
+
+class JobStatus(Base):
+    __tablename__ = 'job_status'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    handle = Column(String, nullable=False)
+    job_type = Column(String, nullable=False)  # e.g., 'enrich_profiles', 'apollo_harvest', 'clay_harvest'
+    status = Column(String, nullable=False, default='running') # 'running', 'completed', 'failed', 'stopped'
+    profiles_processed = Column(Integer, default=0)
+    expected_limit = Column(Integer, nullable=True)
+    error_message = Column(String, nullable=True)
+    
+    start_time = Column(DateTime, server_default=func.now(), nullable=False)
+    end_time = Column(DateTime, nullable=True)
