@@ -46,62 +46,42 @@ lock-in**.
 
 ## ⚡ Quick Start (Local Installation)
 
-Get up and running in minutes by running the application directly on your machine.
-
-### Prerequisites
-
-- [Git](https://git-scm.com/)
-- [Python](https://www.python.org/downloads/) (3.11+ recommended)
-- `venv` for creating virtual environments (usually included with Python)
+Get up and running locally in minutes to access the full visual **Web Dashboard**.
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/eracle/OpenOutreach.git
-cd OpenOutreach
+git clone https://github.com/ScooterAI2025/Scooter_Linkedin.git
+cd Scooter_Linkedin
 ```
 
 ### 2. Set Up a Virtual Environment
-It's highly recommended to use a virtual environment to manage dependencies.
+It's highly recommended to use an isolated Python virtual environment securely.
 ```bash
-# Create the virtual environment
-python -m venv venv
-
-# Activate it
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate  # (On Windows use: .venv\Scripts\activate)
 ```
 
 ### 3. Install Dependencies
-We use `uv` for fast dependency management, which will be installed first.
+Install all the required Python packages (Pandas, Playwright, etc.) and download the secure browser engine needed for deep scraping.
 ```bash
-# Install uv
-pip install uv
-
-# Install project dependencies
-uv pip install -r requirements/local.txt
-
-# Install required browser assets
+pip install -r requirements/base.txt
 playwright install --with-deps chromium
 ```
 
-### 4. Configure the Application
-You need to provide your LinkedIn credentials and target profiles.
-
-1. **Configure LinkedIn accounts**
+### 4. Configure Your Credentials
+You need to provide your LinkedIn credentials for the bot to securely log in.
+1. Create your secrets file:
    ```bash
    cp assets/accounts.secrets.template.yaml assets/accounts.secrets.yaml
    ```
-   Edit `assets/accounts.secrets.yaml` with your credentials.
+2. Open `assets/accounts.secrets.yaml` in any text editor and type in your LinkedIn email and password.
 
-2. **Add target profiles**  
-   Paste LinkedIn profile URLs into `assets/inputs/urls.csv`.
-
-### 5. Run the Application
-
-You can run the main script directly:
+### 5. Start the Web Dashboard!
+Boot up the main server logic and graphic interface:
 ```bash
-python main.py
+python ui_server.py
 ```
-The tool is fully resumable — stop/restart anytime without losing progress.
+*Done! Open your browser and go to **`http://127.0.0.1:8000`** to access your control panel!*
 ---
 
 ## 🐳 Docker Installation
