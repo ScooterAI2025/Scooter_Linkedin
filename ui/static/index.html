@@ -382,6 +382,28 @@
                                             class="text-gray-900">0/0</span></div>
                                 </div>
                             </div>
+
+                            <!-- Connections -->
+                            <div class="p-3 bg-white/40 rounded-xl border border-white/20 backdrop-blur-sm shadow-sm">
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <span
+                                        class="text-[10px] font-black text-gray-700 uppercase tracking-widest">Connections</span>
+                                    <span id="connect-usage-text"
+                                        class="text-[10px] font-black text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">0/0</span>
+                                </div>
+                                <div class="w-full bg-gray-300/30 rounded-full h-1.5 overflow-hidden mb-2">
+                                    <div id="connect-usage-bar" class="bg-purple-500 h-full transition-all duration-700"
+                                        style="width: 0%"></div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-1 text-[7px] font-bold text-gray-500 uppercase">
+                                    <div class="bg-white/30 p-1 rounded">Ses: <span id="connect-session-lim"
+                                            class="text-gray-900">0</span></div>
+                                    <div class="bg-white/30 p-1 rounded">Wk: <span id="connect-weekly-cnt"
+                                            class="text-gray-900">0/0</span></div>
+                                    <div class="bg-white/30 p-1 rounded">Mo: <span id="connect-monthly-cnt"
+                                            class="text-gray-900">0/0</span></div>
+                                </div>
+                            </div>
                         </div>
 
                         <p class="text-[10px] text-gray-600 leading-tight opacity-70">Mimicking human behavior to
@@ -805,6 +827,14 @@
                         </div>
                     </div>
                     <div class="flex gap-3 items-center">
+                        <div class="relative group">
+                            <i
+                                class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs text-scooter-green"></i>
+                            <input type="text" id="queue-search" onkeyup="filterQueueTable()"
+                                placeholder="Filter by Name or Company..."
+                                class="bg-white border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-[11px] font-black uppercase tracking-wider outline-none focus:ring-2 focus:ring-scooter-green/20 w-64 transition-all shadow-sm">
+                        </div>
+
                         <div class="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100"
                             title="Max profiles to process this session">
                             <span class="text-xs font-bold text-gray-500 uppercase">Limit</span>
@@ -862,15 +892,16 @@
                                         <input type="checkbox" id="select-all-queue" onchange="toggleQueueSelection()"
                                             class="w-4 h-4 rounded border-gray-300 text-scooter-green focus:ring-scooter-green">
                                     </th>
-                                    <th class="p-4 text-xs font-bold text-gray-400 uppercase">Action</th>
-                                    <th class="p-4 text-xs font-bold text-gray-400 uppercase">Profile URL</th>
+                                    <th class="p-4 text-xs font-bold text-gray-400 uppercase">Profile</th>
+                                    <th class="p-4 text-xs font-bold text-gray-400 uppercase">Company/Loc</th>
                                     <th class="p-4 text-xs font-bold text-gray-400 uppercase">Role Tag</th>
+                                    <th class="p-4 text-xs font-bold text-gray-400 uppercase text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="queue-table-body" class="text-sm text-gray-600 divide-y divide-gray-50">
                                 <!-- Data injected here -->
                                 <tr>
-                                    <td colspan="3" class="p-10 text-center text-gray-400 italic">No candidates
+                                    <td colspan="4" class="p-10 text-center text-gray-400 italic">No candidates
                                         in
                                         queue. Harvest some first!</td>
                                 </tr>
@@ -1079,9 +1110,10 @@
                                 </div>
                             </div>
 
-                            <button onclick="startCampaign()"
+                            <button onclick="startCampaign()" id="launch-btn"
                                 class="bg-scooter-green hover:bg-white hover:text-scooter-green text-white font-bold px-10 py-4 rounded-2xl shadow-lg shadow-black/30 transition-all transform hover:scale-105 active:scale-95 text-lg">
-                                <i class="fa-solid fa-power-off mr-2"></i> Launch Automation
+                                <i class="fa-solid fa-power-off mr-2"></i> Launch Automation <span id="launch-btn-count"
+                                    class="text-sm opacity-80 italic"></span>
                             </button>
                         </div>
                     </div>
@@ -1515,8 +1547,20 @@
                         opt.textContent = handle;
                         select.appendChild(opt);
                     });
+                    // If the dropdown is currently empty (common on first load),
+                    // auto-select the first active account so usage meters don't stay at 0/0.
                     if (currentVal && accounts.includes(currentVal)) {
                         select.value = currentVal;
+                    } else if (accounts.length > 0) {
+                        select.value = accounts[0];
+                    }
+
+                    // Trigger the same flow as a user selection.
+                    if (select.value) {
+                        // Prefer directly calling loadUsage() to avoid any edge cases where
+                        // a synthetic `change` event isn't picked up yet.
+                        select.dispatchEvent(new Event('change'));
+                        loadUsage().catch(console.error);
                     }
                 } catch (e) { console.error(e); }
             }
@@ -1772,7 +1816,7 @@
 
                     const updateMeter = (idPrefix, usageData) => {
                         if (!usageData) return;
-                        
+
                         const text = document.getElementById(`${idPrefix}-usage-text`);
                         const bar = document.getElementById(`${idPrefix}-usage-bar`);
                         if (text && bar && usageData.daily) {
@@ -1784,7 +1828,7 @@
                         const ses = document.getElementById(`${idPrefix}-session-lim`);
                         const wk = document.getElementById(`${idPrefix}-weekly-cnt`);
                         const mo = document.getElementById(`${idPrefix}-monthly-cnt`);
-                        
+
                         if (ses && usageData.session) ses.innerText = usageData.session.limit;
                         if (wk && usageData.weekly) wk.innerText = `${usageData.weekly.count}/${usageData.weekly.limit}`;
                         if (mo && usageData.monthly) mo.innerText = `${usageData.monthly.count}/${usageData.monthly.limit}`;
@@ -1793,6 +1837,7 @@
                     updateMeter('enrich', data.enrich_profiles);
                     updateMeter('harvest', data.harvested_cards);
                     updateMeter('search', data.people_searches);
+                    updateMeter('connect', data.connection_requests);
 
                     const badge = document.getElementById('account-status-badge');
                     if (badge) {
@@ -1910,16 +1955,20 @@
                 const handle = document.getElementById('handle-input').value;
                 const tbody = document.getElementById('results-table-body');
                 if (!tbody) return;
-                
+
                 if (!silent) {
                     tbody.innerHTML = '<tr><td colspan="7" class="p-10 text-center"><i class="fas fa-spinner fa-spin mr-2"></i>Loading Pool Data...</td></tr>';
                 }
 
                 try {
-                    const res = await fetch(`/api/results?handle=${handle}&refresh=true`);
+                    // Avoid hammering a heavy DB sync on a timer.
+                    // - When `silent=true` (background refresh), do NOT refresh DB.
+                    // - When no handle is selected yet, also do NOT refresh DB.
+                    const refresh = Boolean(handle) && !silent;
+                    const res = await fetch(`/api/results?handle=${encodeURIComponent(handle)}&refresh=${refresh}`);
                     const json = await res.json();
                     allPoolData = json.data || [];
-                    
+
                     const badge = document.getElementById('candidates-badge');
                     if (badge) {
                         badge.textContent = allPoolData.length;
@@ -2586,13 +2635,13 @@
                 const handle = document.getElementById('handle-input').value;
                 const badge = document.getElementById('queue-badge');
                 if (!silent) {
-                    const tbody = document.getElementById('queue-body');
-                    if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="p-10 text-center"><i class="fas fa-spinner fa-spin mr-2 text-scooter-green"></i>Loading...</td></tr>';
+                    const tbody = document.getElementById('queue-table-body');
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center"><i class="fas fa-spinner fa-spin mr-2 text-scooter-green"></i>Loading...</td></tr>';
                 }
                 try {
                     const res = await fetch(`/api/queue?handle=${encodeURIComponent(handle)}`);
                     const data = await res.json();
-                    queueData = data.data || [];
+                    queueData = Array.isArray(data) ? data : (data.data || []);
                     renderQueue(queueData);
                     if (badge) {
                         badge.textContent = queueData.length;
@@ -2602,42 +2651,151 @@
             }
 
             function renderQueue(data) {
-                const tbody = document.getElementById('queue-body');
+                const tbody = document.getElementById('queue-table-body');
                 const countEl = document.getElementById('queue-count');
                 if (!tbody) return;
                 tbody.innerHTML = '';
                 if (countEl) countEl.textContent = `${data.length} candidates pending`;
 
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="p-10 text-center text-gray-400 italic">Queue is empty. Find some leads first!</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-400 italic">Queue is empty. Find some leads first!</td></tr>';
                     return;
                 }
 
                 data.forEach((item, idx) => {
                     const tr = document.createElement('tr');
-                    tr.className = "hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0";
+                    tr.className = "hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 queue-row";
+                    tr.dataset.name = String(item.full_name || "").toLowerCase();
+                    tr.dataset.company = String(item.company || "").toLowerCase();
                     tr.innerHTML = `
-                            <td class="p-4 w-10"><input type="checkbox" name="queue-select" value="${item.linkedin_url}" class="w-4 h-4 rounded border-gray-300"></td>
+                            <td class="p-4 w-10"><input type="checkbox" name="queue-select" value="${item.linkedin_url}" onchange="updateQueueSelectionUI()" class="w-4 h-4 rounded border-gray-300"></td>
                             <td class="p-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-lg bg-scooter-orange/10 flex items-center justify-center text-scooter-orange font-bold text-xs">
+                                    <div class="w-8 h-8 rounded-lg bg-scooter-orange/10 flex items-center justify-center text-scooter-orange font-bold text-xs shadow-sm border border-scooter-orange/20">
                                         ${item.full_name?.[0] || '?'}
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="font-bold text-gray-800 text-sm truncate">${item.full_name}</div>
-                                        <div class="text-[10px] text-gray-400 truncate">${item.headline || 'No headline'}</div>
+                                        <div class="font-bold text-gray-900 text-sm truncate">${item.full_name}</div>
+                                        <div class="text-[10px] text-gray-400 truncate mb-1">${item.headline || 'No headline'}</div>
+                                        <div class="flex items-center gap-2">
+                                            <a href="${item.linkedin_url}" target="_blank" class="text-[9px] text-blue-500 hover:underline font-mono truncate max-w-[150px]">${item.linkedin_url}</a>
+                                        </div>
                                     </div>
                                 </div>
                             </td>
-                            <td class="p-4 text-xs font-mono text-gray-500 hidden md:table-cell">${item.company || '-'}</td>
-                            <td class="p-4 text-right">
-                                <button onclick="deleteQueueItem('${item.linkedin_url}')" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all">
+                            <td class="p-4">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-xs font-black text-gray-700 uppercase tracking-tight">${item.company || '-'}</span>
+                                    ${item.location ? `<span class="text-[9px] text-gray-400 flex items-center gap-1"><i class="fa-solid fa-location-dot"></i> ${item.location}</span>` : ''}
+                                </div>
+                            </td>
+                            <td class="p-4">
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-scooter-green/10 text-scooter-green border border-scooter-green/20">
+                                    ${item.role_name || 'Generic'}
+                                </span>
+                            </td>
+                            <td class="p-4 text-right flex justify-end items-center">
+                                <button onclick="previewDraft('${item.linkedin_url}')" class="w-8 h-8 mr-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Preview AI Message">
+                                    <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+                                </button>
+                                <button onclick="deleteQueueItem('${item.linkedin_url}')" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm">
                                     <i class="fa-solid fa-trash-can text-xs"></i>
                                 </button>
                             </td>
                         `;
                     tbody.appendChild(tr);
                 });
+            }
+
+            function filterQueueTable() {
+                const query = document.getElementById('queue-search').value.toLowerCase();
+                const rows = document.querySelectorAll('.queue-row');
+                rows.forEach(row => {
+                    const name = row.dataset.name;
+                    const company = row.dataset.company;
+                    const match = name.includes(query) || company.includes(query);
+                    row.classList.toggle('hidden', !match);
+                });
+
+                // Clear "Select All" if filter changes
+                const master = document.getElementById('select-all-queue');
+                if (master) master.checked = false;
+            }
+
+            function toggleQueueSelection() {
+                const master = document.getElementById('select-all-queue');
+                // Only select visible rows
+                const checkboxes = document.querySelectorAll('.queue-row:not(.hidden) input[name="queue-select"]');
+                checkboxes.forEach(cb => cb.checked = master?.checked);
+                updateQueueSelectionUI();
+            }
+
+            function updateQueueSelectionUI() {
+                const selCount = Array.from(document.getElementsByName('queue-select')).filter(cb => cb.checked).length;
+                const toolbar = document.getElementById('queue-selection-toolbar');
+                const countDisplay = document.getElementById('queue-selection-count');
+                if (toolbar) toolbar.classList.toggle('hidden', selCount === 0);
+                if (countDisplay) countDisplay.innerText = selCount;
+
+                // Also update campaign button text if in campaign view
+                const launchBtnLabel = document.getElementById('launch-btn-count');
+                if (launchBtnLabel) {
+                    launchBtnLabel.innerText = selCount > 0 ? `(${selCount} selected)` : '';
+                }
+            }
+
+
+            async function previewDraft(url) {
+                const handle = document.getElementById('handle-input').value;
+                if (!handle) return alert('No account selected!');
+                
+                // Show simple loading modal
+                const overlay = document.createElement('div');
+                overlay.className = 'fixed inset-0 bg-gray-900/50 z-50 flex items-center justify-center p-4';
+                overlay.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col">
+                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-white">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                                    <i class="fa-solid fa-robot text-sm"></i>
+                                </div>
+                                <h3 class="text-sm font-bold text-gray-900">AI Message Preview</h3>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="flex items-center justify-center p-6"><i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i><span class="ml-3 text-sm text-gray-500 font-medium">Generating preview with ChatGPT...</span></div>
+                        </div>
+                        <div class="px-6 py-4 border-t border-gray-50 flex justify-end">
+                            <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg transition-colors">Close</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+
+                try {
+                    const res = await fetch('/api/preview_draft', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ handle, url })
+                    });
+                    const data = await res.json();
+                    
+                    const contentDiv = overlay.querySelector('.p-6');
+                    if (data.status === 'ok') {
+                        contentDiv.innerHTML = `
+                            <div class="p-4 bg-gray-50 rounded-lg text-sm text-gray-800 whitespace-pre-wrap font-medium leading-relaxed border border-gray-100 shadow-inner break-words">${data.note.replace(/\\n/g, '<br>')}</div>
+                            <p class="text-[10px] text-gray-400 mt-3 text-center italic">This is exactly what the bot will send upon launch.</p>
+                        `;
+                    } else {
+                        contentDiv.innerHTML = `
+                            <div class="p-4 bg-red-50 text-red-600 text-sm rounded-lg font-bold border border-red-100">
+                                <i class="fa-solid fa-triangle-exclamation mr-2"></i> ${data.message || 'Error generating preview'}
+                            </div>
+                        `;
+                    }
+                } catch(e) {
+                    overlay.querySelector('.p-6').innerHTML = `<div class="p-4 bg-red-50 text-red-600 text-sm rounded-lg font-bold">Error: ${e.message}</div>`;
+                }
             }
 
             // --- REVIEW QUEUE HELPERS ---

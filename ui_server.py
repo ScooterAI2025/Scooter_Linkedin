@@ -1,4 +1,5 @@
 import asyncio
+import asyncio.subprocess
 import logging
 import os
 import subprocess
@@ -75,7 +76,10 @@ async def read_stream(stream):
 @app.get("/", response_class=HTMLResponse)
 async def read_index():
     with open("ui/static/index.html") as f:
-        return f.read()
+        return HTMLResponse(
+            content=f.read(),
+            headers={"Cache-Control": "no-store, max-age=0"},
+        )
 
 @app.get("/api/logs")
 async def sse_logs(request: Request):
@@ -430,48 +434,81 @@ async def stop_process():
                         count += 1
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
-        if count > 0:
-            msg = f"🧹 [SERVER] Cleaned up {count} orphaned bot processes."
-            print(msg)
-            await push_log(msg)
-    except ImportError:
-        # psutil not installed, fallback to basic pkill command
-        os.system("pkill -9 -f 'harvest_search.py|main.py|check_replies.py'")
-        print("🧹 [SERVER] Fallback cleanup (pkill) executed.")
-
+    except Exception as e:
+        print(f"Error in cleanup: {e}")
+        
+    if count > 0:
+        msg = f"🧹 [SERVER] Cleaned up {count} orphaned bot processes."
+        print(msg)
+        await push_log(msg)
+    
     return {"status": "stopped"}
 
 @app.get("/api/results")
-def get_results(handle: str = None, refresh: bool = False):
-    try:
-        import csv
-        import traceback
-        from linkedin.db.engine import Database
-        from linkedin.db.models import Profile
-        from linkedin.db.profiles import url_to_public_id
+async def get_results(handle: str = None, refresh: bool = False):
+    """
+    Returns the final global results list, enriched with profile data.
+    If refresh=true, it re-scans all DBs.
+    """
+    # Defensive: when the UI hasn't selected an account yet, `handle` can be empty.
+    # This endpoint is expensive (DB syncing / enrichment map build), so return quickly
+    # to avoid blocking the UI (dropdown meters, accounts list, etc.).
+    if not handle or handle == "undefined":
+        return {"data": [], "stats": {"total": 0}}
 
-        # 1. Load Master Queue (CSV) - These are our "Constant" results
+    try:
+        from linkedin.db.models import Profile
+        from linkedin.db.engine import Database
+        from linkedin.db.profiles import url_to_public_id
+        from linkedin.api.voyager import parse_linkedin_voyager_response
+        import csv
+        from fastapi.responses import JSONResponse
+
+        # 1. Load Master Queue (CSV)
         queue_records = []
         if HARVEST_FILE.exists():
             try:
-                with open(HARVEST_FILE, "r", encoding="utf-8") as f:
-                    queue_records = list(csv.DictReader(f))
+                import pandas as pd
+                df = pd.read_csv(HARVEST_FILE)
+                df.fillna("", inplace=True)
+                df.drop_duplicates(subset=['url'], keep='last', inplace=True)
+                queue_records = df.tail(500).to_dict('records')
+                # Reverse here so newest is first in Candidates view too
+                queue_records.reverse()
             except Exception as e:
                 print(f"Error reading harvest file: {e}")
 
-        # 2. Get Enrichment Data from ALL available DBs (Global Intelligence Sync)
+        # 2. Global Intelligence Sync (Enrichment Map)
         db_profiles_map = {}
-        
-        # Helper to process a DB session and update map
-        def process_db(db_path):
+        processed_pids = set()
+
+        def sync_from_db(db_path=None, is_cloud=False):
             try:
-                db_wrapper = Database(str(db_path))
+                if is_cloud:
+                    db_wrapper = Database()
+                else:
+                    db_wrapper = Database(str(db_path), force_local=True)
+                
                 session = db_wrapper.get_session()
                 try:
-                    # Fetch all profiles that have some scraped data (profile OR data exists)
-                    profiles = session.query(Profile).filter((Profile.profile.isnot(None)) | (Profile.data.isnot(None))).all()
-                    for p in profiles:
-                        # SNAPSHOT: Extract data immediately to avoid DetachedInstanceError after session.close()
+                    # Filter for enriched profiles or ones with messages
+                    q = session.query(Profile).filter(
+                        (Profile.profile.isnot(None)) | 
+                        (Profile.state == "enriched") |
+                        (Profile.last_message.isnot(None))
+                    )
+                    
+                    # For Cloud, also include discovered to show them in the queue/results if needed
+                    if is_cloud:
+                        q = session.query(Profile).filter(
+                            (Profile.profile.isnot(None)) | 
+                            (Profile.state == "enriched") |
+                            (Profile.state == "discovered") |
+                            (Profile.last_message.isnot(None))
+                        )
+
+                    for p in q.all():
+                        pid = p.public_identifier
                         p_snapshot = {
                             "profile": p.profile,
                             "data": p.data,
@@ -480,88 +517,49 @@ def get_results(handle: str = None, refresh: bool = False):
                             "last_message_at": p.last_message_at,
                             "last_received_message": p.last_received_message,
                             "last_received_at": p.last_received_at,
-                            "summary": p.conversation_summary,
-                            "sentiment": p.conversation_sentiment,
+                            "public_identifier": pid,
                             "transcript": [
                                 {
                                     "direction": m.direction,
-                                    "sender": m.sender_name,
                                     "text": m.text,
                                     "timestamp": m.timestamp.isoformat() if m.timestamp else None
                                 } for m in p.messages
                             ]
                         }
-                        
-                        # Priority Logic:
-                        # 1. If not in map, add it.
-                        # 2. If in map but NEW one has more detail (parsed 'profile' vs None), overwrite.
-                        # 3. If BOTH have 'profile', check if NEW one has 'company_details' while OLD one doesn't.
-                        
-                        is_new_better = False
-                        if p.public_identifier not in db_profiles_map:
-                            db_profiles_map[p.public_identifier] = p_snapshot
-                        else:
-                            # MERGE Transcripts: Ensure we don't lose messages if a "better" profile is found in a different DB
-                            existing = db_profiles_map[p.public_identifier]
-                            
-                            # Merge transcripts
-                            transcripts = existing.get("transcript") or []
-                            new_messages = p_snapshot.get("transcript") or []
-                            
-                            if new_messages:
-                                msg_hashes = {f"{m['direction']}|{m['text']}" for m in transcripts}
-                                for m in new_messages:
-                                    if f"{m['direction']}|{m['text']}" not in msg_hashes:
-                                        transcripts.append(m)
-                                
-                                # Re-sort merged transcripts by timestamp
-                                transcripts.sort(key=lambda x: x.get("timestamp") or "")
-                            
-                            old_p = db_profiles_map[p.public_identifier]
-                            # If old one has no profile but new one does
-                            if p.profile and not old_p["profile"]:
-                                is_new_better = True
-                            # If both have profile, check for company_details (Intelligence)
-                            elif p.profile and old_p["profile"]:
-                                old_profile_dict = old_p["profile"] if isinstance(old_p["profile"], dict) else {}
-                                new_profile_dict = p.profile if isinstance(p.profile, dict) else {}
-                                
-                                has_old_intel = any(pos.get("company_details") for pos in old_profile_dict.get("positions", []))
-                                has_new_intel = any(pos.get("company_details") for pos in new_profile_dict.get("positions", []))
-                                
-                                if has_new_intel and not has_old_intel:
-                                    is_new_better = True
-                                # Final fallback: larger data content
-                                elif has_new_intel == has_old_intel:
-                                    if len(str(p.profile)) > len(str(old_p["profile"])):
-                                        is_new_better = True
 
-                            if is_new_better:
-                                # Keep the better profile data but use the merged transcripts
-                                p_snapshot["transcript"] = transcripts
-                                db_profiles_map[p.public_identifier] = p_snapshot
-                            else:
-                                # Keep existing profile data but update with merged transcripts
-                                existing["transcript"] = transcripts
+                        if pid not in db_profiles_map:
+                            db_profiles_map[pid] = p_snapshot
+                        else:
+                            # Simple merge: prefer non-discovered state and merge transcripts
+                            existing = db_profiles_map[pid]
+                            merged_ts = existing.get("transcript", []) + p_snapshot.get("transcript", [])
+                            existing["transcript"] = merged_ts
+                            if p_snapshot["state"] != "discovered":
+                                if existing["state"] == "discovered" or p_snapshot["profile"]:
+                                    existing.update(p_snapshot)
+                                    existing["transcript"] = merged_ts
                 finally:
                     session.close()
-                    db_wrapper.Session.remove()
+                    db_wrapper.Session.remove() # Ensure session is removed from scoped_session
             except Exception as e:
-                print(f"Global Sync Error for {db_path.name}: {e}")
+                print(f"Sync Failure for {'Cloud' if is_cloud else db_path.name}: {e}")
 
-        # Scan for all .db files in the data directory
-        data_dir = ASSETS_DIR / "data"
-        db_files = list(data_dir.glob("*.db"))
-        for db_file in db_files:
-            process_db(db_file)
-            
-        print(f"🧠 Global Intelligence Sync complete. Loaded {len(db_profiles_map)} unique enriched profiles from {len(db_files)} accounts found in {data_dir}.")
+        # Sync priority: Cloud first, then Local.
+        # This endpoint can be heavy, so we only sync DB data when refresh=true.
+        # Additionally, when syncing locally, only sync the selected handle DB
+        # to keep the UI responsive.
+        if refresh:
+            import os as py_os
+            if py_os.getenv("DATABASE_URL"):
+                sync_from_db(is_cloud=True)
+            else:
+                data_dir = ASSETS_DIR / "data"
+                db_path = data_dir / f"{handle}.db"
+                if db_path.exists():
+                    sync_from_db(db_path)
 
+        # 3. Build Final Dataset
         final_results = []
-        processed_pids = set()
-
-        # 3. Merge CSV (Primary) with DB (Enrichment)
-        from linkedin.api.voyager import parse_linkedin_voyager_response
         for row in queue_records:
             url = row.get("url", "")
             if not url: continue
@@ -570,275 +568,82 @@ def get_results(handle: str = None, refresh: bool = False):
             try: pid = url_to_public_id(url)
             except: pass
             
-            # Detect Source
-            source = row.get("source")
-            if not source or source == "LinkedIn":
-                role_lower = (row.get("role_name") or "").lower()
-                if "clay" in role_lower: source = "Clay"
-                elif "apollo" in role_lower: source = "Apollo"
-                else: source = "LinkedIn"
-
-            # Default data from CSV (The "Constant" part)
-            display_name = row.get("candidate_name") or "Harvested Profile"
-            if display_name == "Harvested Profile" and url and "/in/" in url:
-                try:
-                    handle = url.split("/in/")[1].split("/")[0].split("?")[0]
-                    import re
-                    handle = re.sub(r'-[0-9a-z]{6,15}$', '', handle)
-                    display_name = " ".join([w.capitalize() for w in handle.split("-") if w])
-                except:
-                    pass
+            source = row.get("source") or "LinkedIn"
+            display_name = row.get("candidate_name") or (pid.capitalize() if pid else "Harvested Profile")
 
             record = {
                 "Full Name": display_name,
                 "Role": row.get("role_name") or "Generic",
-                "Headline": "Pending enrichment...",
+                "Headline": "-",
                 "Current Company": row.get("company_name") or "-",
                 "Location": row.get("location") or "-",
-                "Email": "",
-                "About": "",
                 "Status": "HARVESTED",
                 "URL": url,
-                "LinkedIn URL": url, # Explicit field for sorting/display
+                "LinkedIn URL": url,
                 "Source": source,
                 "Picture": row.get("candidate_pic") or "",
                 "Transcript": []
             }
 
-            # Override with DB data if enriched
             if pid and pid in db_profiles_map:
-                snapshot = db_profiles_map[pid]
-                data = snapshot["profile"]
-                raw_data = snapshot["data"]
+                snap = db_profiles_map[pid]
+                prof = snap["profile"]
+                if isinstance(prof, str):
+                    try: 
+                        import json
+                        prof = json.loads(prof)
+                    except: prof = {}
                 
-                # Fallback for older stringified data
-                if isinstance(data, str):
-                    import json
-                    try: data = json.loads(data)
-                    except: data = {}
-                if isinstance(raw_data, str):
-                    import json
-                    try: raw_data = json.loads(raw_data)
-                    except: raw_data = {}
-                
-                # HEAL old records by re-parsing raw Voyager data (now includes projects/certs/location check)
-                needs_healing = (
-                    not data or 
-                    "positions" not in data or 
-                    "skills" not in data or 
-                    "projects" not in data or
-                    not data.get("location_name")
-                )
-                if raw_data and needs_healing:
-                    try:
-                        # Before healing, save current positions that might have company_details
-                        old_positions = data.get("positions", []) if isinstance(data, dict) else []
-                        
-                        healed_data = parse_linkedin_voyager_response(raw_data, public_identifier=pid)
-                        if healed_data:
-                            # Restore company_details if they already existed in any position with same URN
-                            if old_positions and "positions" in healed_data:
-                                urn_to_details = {p.get("urn"): p.get("company_details") for p in old_positions if p.get("company_details")}
-                                for new_pos in healed_data["positions"]:
-                                    if new_pos.get("urn") in urn_to_details:
-                                        new_pos["company_details"] = urn_to_details[new_pos["urn"]]
-                            data = healed_data
-                    except Exception as e:
-                        print(f"Heal failed for {pid}: {e}")
-                
-                if not data: data = {}
-                exp = data.get("positions", [])
-                exp_list = []
-                company = record["Current Company"]
-                for i, job in enumerate(exp):
-                    if not job: continue
-                    title = job.get('title', 'Position')
-                    comp = job.get('company_name', '') or job.get('company', '')
-                    if i == 0 and comp: company = comp
+                if isinstance(prof, dict):
+                    exp = prof.get("positions", [])
+                    company = record["Current Company"]
+                    if exp and isinstance(exp, list) and isinstance(exp[0], dict):
+                        company = exp[0].get("company_name") or company
                     
-                    # Format Dates
-                    dr = job.get('date_range') or {}
-                    if not dr: dr = {}
-                    start = dr.get('start') or {}
-                    end = dr.get('end') or {}
-                    
-                    start_val = (start or {})
-                    end_val = (end or {})
-                    
-                    start_str = f"{start_val.get('month', '') or ''}/{start_val.get('year', '') or ''}".strip("/")
-                    end_str = f"{end_val.get('month', '') or ''}/{end_val.get('year', '') or ''}".strip("/") or "Present"
-                    dates = f"{start_str} - {end_str}" if start_str else ""
-                    
-                    details = job.get('company_details') or {}
-                    exp_list.append({
-                        "title": title,
-                        "company": comp,
-                        "dates": dates,
-                        "company_description": details.get('description') or '',
-                        "company_website": details.get('url') or '',
-                        "company_industry": details.get('industry') or '',
-                        "company_size": details.get('employee_count') or '',
-                        "company_headquarters": details.get('headquarters') or '',
-                        "company_specialties": details.get('specialties') or [],
-                        "description": job.get('description') or ''
+                    record.update({
+                        "Full Name": prof.get("full_name") or record["Full Name"],
+                        "Headline": prof.get("headline") or "-",
+                        "Current Company": company,
+                        "Location": prof.get("location_name") or record["Location"],
+                        "Status": snap["state"].upper() if isinstance(snap, dict) and "state" in snap else "UNKNOWN",
+                        "Transcript": snap.get("transcript", []) if isinstance(snap, dict) else [],
+                        "Picture": prof.get("profile_picture") or record["Picture"]
                     })
-                
-                skills = data.get("skills", [])
-                if isinstance(skills, list):
-                    skills_str = ", ".join([str(s) for s in skills[:12] if s])
-                else:
-                    skills_str = ""
-                
-                record.update({
-                    "Full Name": data.get("full_name") or data.get("name") or record["Full Name"],
-                    "Headline": data.get("headline") or data.get("occupation") or record["Headline"],
-                    "Current Company": company,
-                    "Experience": exp_list,
-                    "Skills": skills_str,
-                    "Location": data.get("location_name") or data.get("city") or (f"{data.get('state', '')}, {data.get('country', '')}".strip(", ")) or record["Location"],
-                    "State": data.get("state") or "",
-                    "Country": data.get("country") or "",
-                    "Certifications": data.get("certifications", []),
-                    "Projects": data.get("projects", []),
-                    "Education": data.get("educations", []),
-                    "Email": data.get("email") or "",
-                    "Phone": data.get("phone") or "",
-                    "About": data.get("summary") or data.get("about") or "",
-                    "Status": snapshot["state"].upper(),
-                    "Picture": data.get("profile_picture") or "",
-                    "Last Message": snapshot["last_message"],
-                    "Last Message At": snapshot["last_message_at"].isoformat() if snapshot["last_message_at"] else None,
-                    "Last Received Message": snapshot["last_received_message"],
-                    "Last Received At": snapshot["last_received_at"].isoformat() if snapshot["last_received_at"] else None,
-                    "Transcript": snapshot.get("transcript", []),
-                    "Conversation Summary": snapshot.get("summary"),
-                    "Conversation Sentiment": snapshot.get("sentiment")
-                })
                 processed_pids.add(pid)
-
+            
             final_results.append(record)
 
-        # 4. Add profiles from DB that are NOT in current CSV (Just in case)
-        for pid, snapshot in db_profiles_map.items():
-            if pid not in processed_pids:
-                data = snapshot["profile"]
-                raw_data = snapshot["data"]
-                
-                if isinstance(data, str):
-                    import json
-                    try: data = json.loads(data)
-                    except: data = {}
-                if isinstance(raw_data, str):
-                    import json
-                    try: raw_data = json.loads(raw_data)
-                    except: raw_data = {}
+        # 4. Add Orphans (Enriched profiles not in CSV) only when refresh=true
+        if refresh:
+            for pid, snap in db_profiles_map.items():
+                if pid not in processed_pids and isinstance(snap, dict) and snap.get("state") != "discovered":
+                    prof = snap.get("profile") or {}
+                    if isinstance(prof, str):
+                        try:
+                            import json
+                            prof = json.loads(prof)
+                        except:
+                            prof = {}
+                    
+                    if isinstance(prof, dict):
+                        final_results.append({
+                            "Full Name": prof.get("full_name") or pid,
+                            "Role": "Direct Enrichment",
+                            "Headline": prof.get("headline") or "-",
+                            "Current Company": prof.get("positions", [{}])[0].get("company_name") if prof.get("positions") and isinstance(prof.get("positions"), list) and len(prof.get("positions")) > 0 and isinstance(prof.get("positions")[0], dict) else "-",
+                            "Location": prof.get("location_name") or "-",
+                            "Status": snap["state"].upper() if "state" in snap else "ENRICHED",
+                            "URL": f"https://www.linkedin.com/in/{pid}",
+                            "LinkedIn URL": f"https://www.linkedin.com/in/{pid}",
+                            "Source": "DB",
+                            "Picture": prof.get("profile_picture") or "",
+                            "Transcript": snap.get("transcript", [])
+                        })
 
-                # HEAL fallback loop
-                needs_healing = (
-                    not data or 
-                    "positions" not in data or 
-                    "skills" not in data or 
-                    "projects" not in data or
-                    not data.get("location_name")
-                )
-                if raw_data and needs_healing:
-                    try:
-                        # Save company_details
-                        old_positions = data.get("positions", []) if isinstance(data, dict) else []
-                        
-                        healed = parse_linkedin_voyager_response(raw_data, public_identifier=pid)
-                        if healed:
-                            if old_positions and "positions" in healed:
-                                urn_to_details = {p.get("urn"): p.get("company_details") for p in old_positions if p.get("company_details")}
-                                for new_pos in healed["positions"]:
-                                    if new_pos.get("urn") in urn_to_details:
-                                        new_pos["company_details"] = urn_to_details[new_pos["urn"]]
-                            data = healed
-                    except: pass
-                    
-                if not data: data = {}
-                exp = data.get("positions", [])
-                exp_list = []
-                company = ""
-                for i, job in enumerate(exp):
-                    if not job: continue
-                    title = job.get('title', 'Position')
-                    comp = job.get('company_name', '') or job.get('company', '')
-                    if i == 0: company = comp
-                    dr = job.get('date_range') or {}
-                    if not dr: dr = {}
-                    
-                    start = dr.get('start') or {}
-                    end = dr.get('end') or {}
-                    
-                    start_val = (start or {})
-                    end_val = (end or {})
-                    
-                    start_str = f"{start_val.get('month', '') or ''}/{start_val.get('year', '') or ''}".strip("/")
-                    end_str = f"{end_val.get('month', '') or ''}/{end_val.get('year', '') or ''}".strip("/") or "Present"
-                    
-                    details = job.get('company_details') or {}
-                    exp_list.append({
-                        "title": title, 
-                        "company": comp, 
-                        "dates": f"{start_str} - {end_str}" if start_str else "",
-                        "company_description": details.get('description') or '',
-                        "company_website": details.get('url') or '',
-                        "company_industry": details.get('industry') or '',
-                        "company_size": details.get('employee_count') or '',
-                        "company_headquarters": details.get('headquarters') or '',
-                        "company_specialties": details.get('specialties') or [],
-                        "description": job.get('description') or ''
-                    })
-                
-                skills = data.get("skills", [])
-                skills_str = ", ".join([str(s) for s in skills[:12] if s]) if isinstance(skills, list) else ""
-                    
-                # Detect Source for legacy
-                source = "LinkedIn"
-                role_lower = (data.get("role_name") or "").lower()
-                if "clay" in role_lower: source = "Clay"
-                elif "apollo" in role_lower: source = "Apollo"
-
-                final_results.append({
-                    "Full Name": data.get("full_name") or data.get("name") or "Legacy Candidate",
-                    "Role": data.get("role_name") or "Old Campaign",
-                    "Headline": data.get("headline") or "-",
-                    "Current Company": company,
-                    "Experience": exp_list,
-                    "Skills": skills_str,
-                    "Location": data.get("location_name") or data.get("city") or (f"{data.get('state', '')}, {data.get('country', '')}".strip(", ")) or "-",
-                    "State": data.get("state") or "",
-                    "Country": data.get("country") or "",
-                    "Certifications": data.get("certifications", []),
-                    "Projects": data.get("projects", []),
-                    "Education": data.get("educations", []),
-                    "Email": data.get("email") or "",
-                    "Phone": data.get("phone") or "",
-                    "About": data.get("summary") or data.get("about") or "",
-                    "Status": snapshot["state"].upper(),
-                    "URL": f"https://www.linkedin.com/in/{pid}",
-                    "LinkedIn URL": f"https://www.linkedin.com/in/{pid}",
-                    "Source": source,
-                    "Picture": data.get("profile_picture") or "",
-                    "Last Message": snapshot["last_message"],
-                    "Last Message At": snapshot["last_message_at"].isoformat() if snapshot.get("last_message_at") else None,
-                    "Last Received Message": snapshot["last_received_message"],
-                    "Last Received At": snapshot["last_received_at"].isoformat() if snapshot.get("last_received_at") else None,
-                    "Transcript": snapshot.get("transcript", []),
-                    "Conversation Summary": snapshot.get("summary"),
-                    "Conversation Sentiment": snapshot.get("sentiment")
-                })
-
-        # 5. Newest first
         final_results.reverse()
-        
         return {
             "data": final_results,
-            "stats": {
-                "total": len(final_results),
-                "breakdown": {"total": len(final_results)}
-            }
+            "stats": {"total": len(final_results)}
         }
     except Exception as e:
         print(f"CRITICAL ERROR in get_results: {e}")
@@ -909,7 +714,7 @@ def get_usage(handle: str):
     tracker = UsageTracker(ASSETS_DIR)
     
     # Categories to monitor
-    categories = ["enrich_profiles", "harvested_cards", "people_searches"]
+    categories = ["enrich_profiles", "harvested_cards", "people_searches", "connection_requests"]
     results = {}
     is_safe_all = True
     
@@ -1040,10 +845,15 @@ def get_queue(handle: str = None):
     import csv
     queue_data = []
     try:
-        with open(HARVEST_FILE, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            queue_data = list(reader)
-    except Exception:
+        import pandas as pd
+        df = pd.read_csv(HARVEST_FILE)
+        df.fillna("", inplace=True)
+        df.drop_duplicates(subset=['url'], keep='last', inplace=True)
+        # Convert to list of dicts for UI, take only the latest 300 
+        queue_data = df.tail(300).to_dict('records')
+        queue_data.reverse() # Show newest first
+    except Exception as e:
+        print(f"Error parsing HARVEST_FILE: {e}")
         pass
     
     # Enrich with DB Status only if handle is provided
@@ -1171,5 +981,86 @@ async def check_replies_now(request: Request):
 
 
 
+@app.post("/api/preview_draft")
+async def preview_draft(request: Request):
+    """Generate a preview of the AI connection note for a candidate"""
+    data = await request.json()
+    handle = data.get("handle")
+    url = data.get("url")
+    if not handle or not url:
+        return JSONResponse({"status": "error", "message": "Handle and URL are required."}, status_code=422)
+
+    from linkedin.db.engine import Database
+    from linkedin.db.profiles import url_to_public_id
+    from linkedin.db.models import Profile
+    from linkedin.sessions.registry import get_session
+    from linkedin.templates.renderer import render_template
+    import csv
+    
+    session = get_session(handle=handle)
+    
+    if not HARVEST_FILE.exists():
+        return JSONResponse({"status": "error", "message": "Queue is empty."}, status_code=400)
+        
+    target_row = None
+    with open(HARVEST_FILE, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row.get("url") == url:
+                target_row = row
+                break
+                
+    if not target_row:
+        return JSONResponse({"status": "error", "message": "Candidate not found in queue."}, status_code=404)
+        
+    profile = target_row.copy()
+    # Normalize keys if needed
+    if "candidate_name" in profile:
+        profile["first_name"] = profile["candidate_name"].split()[0]
+        
+    try:
+        db_wrapper = Database.from_handle(handle)
+        db_session = db_wrapper.get_session()
+        try:
+            pid = url_to_public_id(url)
+            db_prof = db_session.query(Profile).filter(Profile.public_identifier == pid).first()
+            if db_prof and db_prof.profile:
+                p_data = db_prof.profile
+                if isinstance(p_data, str):
+                    import json
+                    try: p_data = json.loads(p_data)
+                    except: p_data = {}
+                for k, v in p_data.items():
+                    if k not in profile: profile[k] = v
+                if "experience" in p_data and isinstance(p_data["experience"], list) and len(p_data["experience"]) > 0:
+                    profile["positions"] = [{"company_name": p_data["experience"][0].get("company", "their current company")}]
+                if "name" in p_data:
+                    profile["first_name"] = p_data["name"].split()[0]
+        finally:
+            db_session.close()
+            db_wrapper.Session.remove()
+    except Exception as e:
+        print(f"Draft Preview DB error: {e}")
+         
+    template_file = session.config.get("connection_template", "templates/prompts/invite.j2")
+    template_type = session.config.get("connection_template_type", "ai_prompt")
+    
+    try:
+        # Resolve path
+        from linkedin.conf import ASSETS_DIR
+        tf = ASSETS_DIR / template_file
+        if not tf.exists():
+            return JSONResponse({"status": "error", "message": f"Template not found: {template_file}"}, status_code=404)
+            
+        note = render_template(session, str(tf), template_type, profile, include_link=False)
+        return {"status": "ok", "note": note}
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
 if __name__ == "__main__":
-    uvicorn.run("ui_server:app", host="0.0.0.0", port=8000, reload=True)
+    # `reload=True` can peg CPU on large repos (file watching), which can cause the
+    # UI to get stuck (meters remain 0/0) because API responses don't come back.
+    # Enable explicitly by setting UVICORN_RELOAD=1.
+    reload_flag = os.getenv("UVICORN_RELOAD", "").strip().lower() in {"1", "true", "yes", "on"}
+    uvicorn.run("ui_server:app", host="0.0.0.0", port=8000, reload=reload_flag)
