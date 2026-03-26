@@ -214,7 +214,26 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-6">
+        <div class="flex items-center gap-4">
+            <!-- New Header-Integrated Logs (Pill style) -->
+            <div class="relative w-[280px] h-9">
+                <div id="terminal-container"
+                    class="absolute top-0 left-0 w-full h-9 bg-gray-900/95 backdrop-blur-xl rounded-xl border border-white/10 shadow-2xl transition-all duration-500 overflow-hidden z-50 group hover:h-64 cursor-pointer">
+                    <div class="h-9 px-3 flex items-center justify-between border-b border-white/5"
+                        onclick="document.getElementById('terminal-container').classList.toggle('h-64')">
+                        <div class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-scooter-green animate-pulse"></span>
+                            <span class="text-[9px] font-black text-white uppercase tracking-widest">Live Activity</span>
+                        </div>
+                        <i class="fa-solid fa-terminal text-gray-400 text-[10px]"></i>
+                    </div>
+                    <div id="logs"
+                        class="p-3 h-[calc(256px-36px)] overflow-y-auto font-mono text-green-400 space-y-1 text-[9px] custom-scrollbar selection:bg-green-400/20">
+                        <div class="opacity-50 italic">> system monitoring active...</div>
+                    </div>
+                </div>
+            </div>
+
             <div id="status-indicator"
                 class="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-100 shadow-sm text-sm font-medium text-gray-600 transition-all">
                 <span class="w-2.5 h-2.5 rounded-full bg-gray-300 shadow-sm" id="status-dot"></span>
@@ -1327,22 +1346,6 @@
         </div>
 
 
-        <!-- Floating Logs Terminal -->
-        <div id="terminal-container"
-            class="fixed bottom-6 right-6 w-[400px] h-10 bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 transition-all duration-500 overflow-hidden z-40 group hover:h-64 translate-y-0">
-            <div class="h-10 px-4 flex items-center justify-between border-b border-white/5 cursor-pointer"
-                onclick="document.getElementById('terminal-container').classList.toggle('h-64')">
-                <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-scooter-green animate-pulse"></span>
-                    <span class="text-[10px] font-black text-white uppercase tracking-widest">Live Activity Log</span>
-                </div>
-                <i class="fa-solid fa-terminal text-gray-500 text-xs"></i>
-            </div>
-            <div id="logs"
-                class="p-4 h-[calc(100%-40px)] overflow-y-auto font-mono text-green-400 space-y-1 text-[10px] custom-scrollbar selection:bg-green-400/20">
-                <div class="opacity-50 italic">> system initialized... ready for commands.</div>
-            </div>
-        </div>
 
         <script>
             // --- GLOBAL STATE ---
@@ -1907,7 +1910,7 @@
 
             async function launchCampaignAction() {
                 const handle = document.getElementById('handle-input').value;
-                if (!handle) return alert("Enter LinkedIn Handle");
+                if (!handle) return alert("❌ Error: Please select an account handle first.");
 
                 const isCampaignView = !document.getElementById('view-campaign').classList.contains('hidden');
 
@@ -1924,14 +1927,15 @@
                 const selectedUrls = Array.from(document.getElementsByName('queue-select'))
                     .filter(cb => cb.checked).map(cb => cb.value);
 
-                if (!confirm(`Launch campaign for ${selectedUrls.length || 'all'} items?`)) return;
+                if (!confirm(`🚀 Launch campaign for ${selectedUrls.length || 'all pending'} items?`)) return;
 
+                setStatus("Starting Campaign...", "bg-yellow-400");
                 try {
                     const body = {
                         handle,
                         enrich_only: enrichOnly,
                         limit: selectedUrls.length || parseInt(limit),
-                        note: enrichOnly ? null : note
+                        note: enrichOnly ? null : (note && note.trim() ? note : null)
                     };
                     if (selectedUrls.length > 0) body.urls = selectedUrls;
 
@@ -1941,13 +1945,19 @@
                         body: JSON.stringify(body)
                     });
                     const data = await res.json();
-                    if (data.status === 'started') {
-                        alert("Campaign Started!");
+                    if (data.status === 'started' || res.ok) {
+                        alert("✅ Campaign Launched Successfully!");
                         connectLogs();
+                        switchTab('log'); // Show logs immediately 
                     } else {
-                        alert("Error: " + data.message);
+                        alert("❌ Server Error: " + (data.message || "Unknown error"));
+                        setStatus("Campaign Failed", "bg-red-500");
                     }
-                } catch (e) { console.error(e); }
+                } catch (e) { 
+                    console.error(e); 
+                    alert("❌ Network Error: Could not reach the server.");
+                    setStatus("Connection Lost", "bg-red-500");
+                }
             }
 
             // --- RESULTS / CANDIDATES ---
@@ -2151,7 +2161,10 @@
                                     <span class="w-6 h-px bg-gray-200"></span> Key Skills
                                 </h3>
                                 <div class="flex flex-wrap gap-1.5">
-                                    ${(row.Skills || "").split(',').map(s => s.trim()).filter(s => s).map(s => `<span class="bg-white px-2 py-1 rounded-lg border border-gray-100 text-[10px] font-bold text-gray-600 shadow-sm">${s}</span>`).join('') || '<div class="text-xs text-gray-400">No skills.</div>'}
+                                    ${(() => {
+                                        const skillsList = Array.isArray(row.Skills) ? row.Skills : (typeof row.Skills === 'string' ? row.Skills.split(',') : []);
+                                        return skillsList.map(s => s.trim()).filter(s => s).map(s => `<span class="bg-white px-2 py-1 rounded-lg border border-gray-100 text-[10px] font-bold text-gray-600 shadow-sm">${s}</span>`).join('');
+                                    })() || '<div class="text-xs text-gray-400">No skills identified yet.</div>'}
                                 </div>
                             </div>
                         </div>
@@ -2268,13 +2281,13 @@
                             </td>
                             <td class="p-4 w-[12%] text-right">
                                 <div class="flex items-center justify-end gap-2">
-                                    ${row['Transcript'] && row['Transcript'].length > 0 ? `
-                                    <button onclick="showConversation('${row['URL'] || row['LinkedIn URL']}')" 
+                                    ${(row['Transcript'] && row['Transcript'].length > 0) ? `
+                                    <button data-url="${row.URL || row['LinkedIn URL']}" onclick="showConversation(this.dataset.url)" 
                                         class="p-2 bg-scooter-orange/10 text-scooter-orange border border-scooter-orange/20 rounded-lg shadow-sm transition-all animate-pulse-subtle" 
                                         title="View Outreach Transcript">
                                         <i class="fa-solid fa-message text-[10px]"></i>
                                     </button>` : ''}
-                                    <button onclick="showCandidateDetails('${row.URL}')" class="p-2 bg-gray-50 hover:bg-scooter-green/10 text-gray-400 hover:text-scooter-green rounded-lg transition-all" title="View Full Details">
+                                    <button data-url="${row.URL || row['LinkedIn URL']}" onclick="showCandidateDetails(this.dataset.url)" class="p-2 bg-gray-50 hover:bg-scooter-green/10 text-gray-400 hover:text-scooter-green rounded-lg transition-all" title="View Full Details">
                                         <i class="fa-solid fa-eye text-[10px]"></i>
                                     </button>
                                     <button onclick="alert('Coming soon: Direct Message')" class="p-2 bg-gray-50 hover:bg-scooter-green/10 text-gray-400 hover:text-scooter-green rounded-lg transition-all" title="Send Message">
@@ -2377,25 +2390,43 @@
 
             async function processSelected(enrichOnly = true) {
                 const handle = document.getElementById('handle-input').value;
+                if (!handle) return alert("❌ Error: Please select an account handle first.");
+                
                 const selectedUrls = Array.from(document.getElementsByName('candidate-select'))
                     .filter(cb => cb.checked).map(cb => cb.value);
 
-                if (selectedUrls.length === 0) return;
-                if (!confirm(`Process ${selectedUrls.length} selected candidates?`)) return;
+                if (selectedUrls.length === 0) return alert("No candidates selected.");
+                if (!confirm(`🚀 Process ${selectedUrls.length} selected candidates?`)) return;
+
+                const note = document.getElementById('connection-note').value;
+                setStatus("Launching Bulk Action...", "bg-yellow-400");
+
+                // 🟢 Connect logs BEFORE starting so we catch the heartbeat
+                connectLogs();
+                switchTab('log'); 
 
                 try {
                     const res = await fetch('/api/campaign', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ handle, enrich_only: enrichOnly, limit: selectedUrls.length, urls: selectedUrls })
+                        body: JSON.stringify({ 
+                            handle, 
+                            enrich_only: enrichOnly, 
+                            limit: selectedUrls.length, 
+                            urls: selectedUrls,
+                            note: enrichOnly ? null : (note && note.trim() ? note : null)
+                        })
                     });
-                    if (res.ok) {
-                        alert("Processing started!");
-                        connectLogs();
+                    const data = await res.json();
+                    if (res.ok || data.status === 'started') {
+                        // Success handled by tab switch above
+                    } else {
+                        alert("❌ Server Error: " + (data.message || "Unknown error"));
+                        setStatus("Failed", "bg-red-500");
                     }
                 } catch (e) {
                     console.error(e);
-                    alert("Failed to start campaign");
+                    alert("❌ Network Error: Could not reach the server.");
                 }
             }
 
@@ -2540,12 +2571,12 @@
                             <div class="flex flex-col items-end gap-3">
                                 <div class="flex items-center gap-2">
                                     ${row['Transcript'] && row['Transcript'].length > 0 ? `
-                                    <button onclick="showConversation('${row['URL'] || row['LinkedIn URL']}')" 
+                                    <button data-url="${row['URL'] || row['LinkedIn URL']}" onclick="showConversation(this.dataset.url)" 
                                         class="p-1.5 bg-scooter-orange/10 text-scooter-orange border border-scooter-orange/20 rounded-lg shadow-sm transition-all animate-pulse-subtle" 
                                         title="View Outreach Transcript">
                                         <i class="fa-solid fa-message text-[10px]"></i>
                                     </button>` : ''}
-                                    <button onclick="showCandidateDetails('${row['URL'] || row['LinkedIn URL']}')" class="p-1.5 bg-white hover:bg-scooter-green/10 text-gray-300 hover:text-scooter-green border border-gray-100 rounded-lg shadow-sm transition-all" title="Review Intelligence">
+                                    <button data-url="${row['URL'] || row['LinkedIn URL']}" onclick="showCandidateDetails(this.dataset.url)" class="p-1.5 bg-white hover:bg-scooter-green/10 text-gray-300 hover:text-scooter-green border border-gray-100 rounded-lg shadow-sm transition-all" title="Review Intelligence">
                                         <i class="fa-solid fa-eye text-[9px]"></i>
                                     </button>
                                 </div>
