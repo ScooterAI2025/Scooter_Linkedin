@@ -469,7 +469,7 @@ async def get_results(handle: str = None, refresh: bool = False):
         if HARVEST_FILE.exists():
             try:
                 import pandas as pd
-                df = pd.read_csv(HARVEST_FILE)
+                df = pd.read_csv(HARVEST_FILE, on_bad_lines='skip')
                 df.fillna("", inplace=True)
                 df.drop_duplicates(subset=['url'], keep='last', inplace=True)
                 queue_records = df.tail(500).to_dict('records')
@@ -846,7 +846,7 @@ def get_queue(handle: str = None):
     queue_data = []
     try:
         import pandas as pd
-        df = pd.read_csv(HARVEST_FILE)
+        df = pd.read_csv(HARVEST_FILE, on_bad_lines='skip')
         df.fillna("", inplace=True)
         df.drop_duplicates(subset=['url'], keep='last', inplace=True)
         # Convert to list of dicts for UI, take only the latest 300 
