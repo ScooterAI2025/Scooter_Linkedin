@@ -472,7 +472,7 @@ async def get_results(handle: str = None, refresh: bool = False):
                 df = pd.read_csv(HARVEST_FILE, on_bad_lines='skip')
                 df.fillna("", inplace=True)
                 df.drop_duplicates(subset=['url'], keep='last', inplace=True)
-                queue_records = df.tail(500).to_dict('records')
+                queue_records = df.to_dict('records')
                 # Reverse here so newest is first in Candidates view too
                 queue_records.reverse()
             except Exception as e:
@@ -849,8 +849,8 @@ def get_queue(handle: str = None):
         df = pd.read_csv(HARVEST_FILE, on_bad_lines='skip')
         df.fillna("", inplace=True)
         df.drop_duplicates(subset=['url'], keep='last', inplace=True)
-        # Convert to list of dicts for UI, take only the latest 300 
-        queue_data = df.tail(300).to_dict('records')
+        # Convert to list of dicts for UI
+        queue_data = df.to_dict('records')
         queue_data.reverse() # Show newest first
     except Exception as e:
         print(f"Error parsing HARVEST_FILE: {e}")
