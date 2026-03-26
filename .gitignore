@@ -25,3 +25,18 @@ logs/*.log
 .vscode/*.db
 *.txt
 *.log
+
+# Heavy Node/NPM dependencies
+node_modules/
+package-lock.json
+
+# Local Heavy Data & Databases
+*.db
+*.csv
+*.json
+test_*.py
+
+# Locally Generated Debug Screenshots
+debug_*.png
+debug_*.html
+output.json
