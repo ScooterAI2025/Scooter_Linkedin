@@ -469,7 +469,19 @@ async def get_results(handle: str = None, refresh: bool = False):
         if HARVEST_FILE.exists():
             try:
                 import pandas as pd
-                df = pd.read_csv(HARVEST_FILE, on_bad_lines='skip')
+                import csv
+                with open(HARVEST_FILE, "r", encoding="utf-8") as f:
+                    reader = csv.reader(f)
+                    header = next(reader, [])
+                    if len(header) > 0 and 'source' not in header:
+                        header.append('source')
+                    data = []
+                    for row in reader:
+                        while len(row) < len(header):
+                            row.append("")
+                        data.append(row[:len(header)])
+                
+                df = pd.DataFrame(data, columns=header)
                 df.fillna("", inplace=True)
                 df.drop_duplicates(subset=['url'], keep='last', inplace=True)
                 queue_records = df.to_dict('records')
@@ -846,7 +858,18 @@ def get_queue(handle: str = None):
     queue_data = []
     try:
         import pandas as pd
-        df = pd.read_csv(HARVEST_FILE, on_bad_lines='skip')
+        with open(HARVEST_FILE, "r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            header = next(reader, [])
+            if len(header) > 0 and 'source' not in header:
+                header.append('source')
+            data = []
+            for row in reader:
+                while len(row) < len(header):
+                    row.append("")
+                data.append(row[:len(header)])
+        
+        df = pd.DataFrame(data, columns=header)
         df.fillna("", inplace=True)
         df.drop_duplicates(subset=['url'], keep='last', inplace=True)
         # Convert to list of dicts for UI

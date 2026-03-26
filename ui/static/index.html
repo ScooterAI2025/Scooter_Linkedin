@@ -1961,10 +1961,10 @@
                 }
 
                 try {
-                    // Avoid hammering a heavy DB sync on a timer.
-                    // - When `silent=true` (background refresh), do NOT refresh DB.
-                    // - When no handle is selected yet, also do NOT refresh DB.
-                    const refresh = Boolean(handle) && !silent;
+                    // Keep consistent results counts: when an account handle is selected,
+                    // always request with `refresh=true` so the UI includes the full
+                    // enriched/orphan candidates list.
+                    const refresh = Boolean(handle);
                     const res = await fetch(`/api/results?handle=${encodeURIComponent(handle)}&refresh=${refresh}`);
                     const json = await res.json();
                     allPoolData = json.data || [];
