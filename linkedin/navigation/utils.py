@@ -17,7 +17,7 @@ def goto_page(session: "AccountSession",
               expected_url_pattern: str,
               timeout: int = 10_000,
               error_message: str = "",
-              to_scrape=True,
+              to_scrape=OPPORTUNISTIC_SCRAPING,
               ):
     from linkedin.db.profiles import add_profile_urls
     page = session.page
