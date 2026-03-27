@@ -84,7 +84,7 @@ def process_profile_row(
                     template_type = session.config.get("connection_template_type", "ai_prompt")
                     if template_file:
                         logger.info(f"🎨 Generating AI connection note for {public_identifier}...")
-                        note = render_template(session, template_file, template_type, profile, include_link=False)
+                        note = render_template(session, template_file, template_type, profile, include_link=True)
                         # Ensure it's not too long for LinkedIn (300 chars limit)
                         if len(note) > 300:
                             note = note[:297] + "..."
