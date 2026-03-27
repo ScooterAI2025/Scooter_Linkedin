@@ -73,11 +73,18 @@ def _check_weekly_invitation_limit(session):
 def _connect_direct(session):
     session.wait()
     top_card = get_top_card(session)
-    direct = top_card.locator('button[aria-label*="Invite"][aria-label*="to connect"]:visible')
+    # Broadly search for any Connect button
+    direct = session.page.locator(
+        'button[aria-label*="Invite"]:visible, '
+        'button[aria-label*="to connect"]:visible, '
+        'button[aria-label^="Connect with"]:visible, '
+        'button:has-text("Connect"):not(:text-matches("(?i)Connections")):visible'
+    ).first
+    
     if direct.count() == 0:
         return False
 
-    direct.first.click()
+    direct.click()
     logger.debug("Clicked direct 'Connect' button")
 
     error = session.page.locator('div[data-test-artdeco-toast-item-type="error"]')
@@ -138,9 +145,16 @@ def _perform_send_invitation_with_note(session, message: str):
     session.wait()
     top_card = get_top_card(session)
 
-    direct = top_card.locator('button[aria-label*="Invite"][aria-label*="to connect"]:visible')
+    # 1. Broadly search for any button that looks like a Connect/Invite button on the whole page
+    direct = session.page.locator(
+        'button[aria-label*="Invite"]:visible, '
+        'button[aria-label*="to connect"]:visible, '
+        'button[aria-label^="Connect with"]:visible, '
+        'button:has-text("Connect"):not(:text-matches("(?i)Connections")):visible'
+    ).first
+    
     if direct.count() > 0:
-        direct.first.click()
+        direct.click()
     else:
         more = top_card.locator(
             'button[id*="overflow"]:visible, '
