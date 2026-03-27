@@ -142,13 +142,25 @@ def _perform_send_invitation_with_note(session, message: str):
     if direct.count() > 0:
         direct.first.click()
     else:
-        more = top_card.locator('button[id*="overflow"], button[aria-label*="More actions"]').first
-        more.click()
+        more = top_card.locator(
+            'button[id*="overflow"]:visible, '
+            'button[aria-label*="More actions"]:visible'
+        )
+        if more.count() == 0:
+            return False
+        more.first.click()
         session.wait()
-        session.page.locator('div[role="button"][aria-label^="Invite"][aria-label*=" to connect"]').first.click()
+        
+        connect_option = top_card.locator('div[role="button"][aria-label^="Invite"][aria-label*=" to connect"]')
+        if connect_option.count() == 0:
+            return False
+        connect_option.first.click()
 
     session.wait()
-    session.page.locator('button:has-text("Add a note")').first.click()
+    add_note_btn = session.page.locator('button:has-text("Add a note")')
+    if add_note_btn.count() == 0:
+        return False
+    add_note_btn.first.click()
     session.wait()
 
     textarea = session.page.locator('textarea#custom-message, textarea[name="message"]')
@@ -156,10 +168,14 @@ def _perform_send_invitation_with_note(session, message: str):
     session.wait()
     logger.debug("Filled note (%d chars)", len(message))
 
-    session.page.locator('button:has-text("Send"), button[aria-label*="Send invitation"]').first.click(force=True)
-    session.wait()
-    logger.debug("Connection request with note sent")
-    return True
+    send_btn = session.page.locator('button:has-text("Send"), button[aria-label*="Send invitation"]')
+    if send_btn.count() > 0:
+        send_btn.first.click(force=True)
+        session.wait()
+        logger.debug("Connection request with note sent")
+        return True
+    
+    return False
 
 
 if __name__ == "__main__":
