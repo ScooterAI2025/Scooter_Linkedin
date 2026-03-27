@@ -154,25 +154,30 @@ def _perform_send_invitation_with_note(session, message: str):
     ).first
     
     if direct.count() > 0:
+        logger.debug("Found explicit Connect button. Clicking it.")
         direct.click()
     else:
+        logger.debug("No direct Connect button found. Trying 'More' dropdown...")
         more = top_card.locator(
             'button[id*="overflow"]:visible, '
             'button[aria-label*="More actions"]:visible'
         )
         if more.count() == 0:
+            logger.warning("Abort: Neither 'Connect' nor 'More' buttons were found on the profile.")
             return False
         more.first.click()
         session.wait()
         
         connect_option = top_card.locator('div[role="button"][aria-label^="Invite"][aria-label*=" to connect"]')
         if connect_option.count() == 0:
+            logger.warning("Abort: 'More' was clicked, but there was no 'Connect' option inside the dropdown.")
             return False
         connect_option.first.click()
 
     session.wait()
-    add_note_btn = session.page.locator('button:has-text("Add a note")')
+    add_note_btn = session.page.locator('button:has-text("Add a note"), button[aria-label*="Add a note"]')
     if add_note_btn.count() == 0:
+        logger.warning(f"Abort: The connection modal opened, but the 'Add a note' button was missing. (Page URL: {session.page.url})")
         return False
     add_note_btn.first.click()
     session.wait()
@@ -189,6 +194,7 @@ def _perform_send_invitation_with_note(session, message: str):
         logger.debug("Connection request with note sent")
         return True
     
+    logger.warning("Abort: Note was filled, but the final 'Send' button could not be found.")
     return False
 
 
