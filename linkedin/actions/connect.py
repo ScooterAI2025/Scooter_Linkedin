@@ -1,6 +1,7 @@
 # linkedin/actions/connect.py
 import logging
 from typing import Dict, Any
+from termcolor import colored
 
 from linkedin.navigation.enums import ProfileState
 from linkedin.navigation.exceptions import SkipProfile, ReachedConnectionLimit
@@ -177,8 +178,28 @@ def _perform_send_invitation_with_note(session, message: str):
     session.wait()
     add_note_btn = session.page.locator('button:has-text("Add a note"), button[aria-label*="Add a note"]')
     if add_note_btn.count() == 0:
-        logger.warning(f"Abort: The connection modal opened, but the 'Add a note' button was missing. (Page URL: {session.page.url})")
+        logger.info(colored("⚠️ LinkedIn restricted custom notes for this account (Limit Reached or Privacy Settings).", "yellow", attrs=["bold"]))
+        logger.info("Attempting a clean, raw connection request instead...")
+        
+        # Fallback 1: 'Send without a note' button
+        send_without_note = session.page.locator('button:has-text("Send without a note")')
+        if send_without_note.count() > 0:
+            logger.info("Falling back to 'Send without a note'. Job pitch will wait until they accept.")
+            send_without_note.first.click(force=True)
+            session.wait()
+            return True
+            
+        # Fallback 2: Direct 'Send' button (if it's the only one left on the modal)
+        send_bare = session.page.locator('button[aria-label*="Send invitation"], button:has-text("Send"):visible')
+        if send_bare.count() > 0:
+            logger.info("Falling back to raw 'Send' button. Job pitch will wait until they accept.")
+            send_bare.first.click(force=True)
+            session.wait()
+            return True
+
+        logger.warning("Abort: The connection modal opened, but no 'Add a note' or 'Send' button was found.")
         return False
+        
     add_note_btn.first.click()
     session.wait()
 
