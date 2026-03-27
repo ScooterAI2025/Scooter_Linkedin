@@ -78,7 +78,7 @@ def _connect_direct(session):
         'button[aria-label*="Invite"]:visible, '
         'button[aria-label*="to connect"]:visible, '
         'button[aria-label^="Connect with"]:visible, '
-        'button:has-text("Connect"):not(:text-matches("(?i)Connections")):visible'
+        'button:text-is("Connect"):visible'
     ).first
     
     if direct.count() == 0:
@@ -150,7 +150,7 @@ def _perform_send_invitation_with_note(session, message: str):
         'button[aria-label*="Invite"]:visible, '
         'button[aria-label*="to connect"]:visible, '
         'button[aria-label^="Connect with"]:visible, '
-        'button:has-text("Connect"):not(:text-matches("(?i)Connections")):visible'
+        'button:text-is("Connect"):visible'
     ).first
     
     if direct.count() > 0:
