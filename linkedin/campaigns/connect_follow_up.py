@@ -85,9 +85,9 @@ def process_profile_row(
                     if template_file:
                         logger.info(f"🎨 Generating AI connection note for {public_identifier}...")
                         note = render_template(session, template_file, template_type, profile, include_link=True)
-                        # Ensure it's not too long for LinkedIn (300 chars limit)
-                        if len(note) > 300:
-                            note = note[:297] + "..."
+                        # Ensure it's not too long for LinkedIn tier limit (200 chars)
+                        if len(note) > 195:
+                            note = note[:192] + "..."
                         profile['note'] = note
                 except Exception as e:
                     logger.error(f"Failed to generate AI connection note for {public_identifier}: {e}")
@@ -171,7 +171,7 @@ def process_profiles(handle, session, profiles: list[dict], enrich_only: bool = 
                 )
                 
                 # If we processed a profile (scraped, invited, or messaged)
-                if (profile is None and enrich_only) or profile:
+                if (profile is None and enrich_only) or profile is not None:
                      actions_count += 1
                      session.profiles_scraped_this_batch += 1
                      tracker.increment(handle, "enrich_profiles")
@@ -191,7 +191,7 @@ def process_profiles(handle, session, profiles: list[dict], enrich_only: bool = 
                      
                      logger.info(f"Action count: {actions_count}/{MAX_ACTIONS}")
 
-                continue_same_profile = bool(profile)
+                continue_same_profile = (profile is not None)
             except SkipProfile as e:
                 public_identifier = simple_profile["public_identifier"]
                 logger.info(

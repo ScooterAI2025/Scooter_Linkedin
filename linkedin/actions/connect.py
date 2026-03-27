@@ -208,10 +208,33 @@ def _perform_send_invitation_with_note(session, message: str):
     session.wait()
     logger.debug("Filled note (%d chars)", len(message))
 
-    send_btn = session.page.locator('button:has-text("Send"), button[aria-label*="Send invitation"]')
+    dialog = session.page.locator('div[role="dialog"]')
+    
+    send_btn = dialog.locator('button:has-text("Send"), button[aria-label*="Send invitation"]')
     if send_btn.count() > 0:
-        send_btn.first.click(force=True)
+        if send_btn.first.is_disabled():
+            logger.warning(colored(f"⚠️ Abort: AI pitch was {len(message)} chars, exceeding LinkedIn's limit! The Send button got disabled.", "red", attrs=["bold"]))
+            logger.info("Dismissing modal. Please adjust your prompt to be even shorter or remove the URL.")
+            close_btn = dialog.locator('button[aria-label="Dismiss"]')
+            if close_btn.count() > 0:
+                close_btn.first.click()
+            return False
+            
+        send_btn.first.click()
         session.wait()
+        
+        # 🛡️ Post-click safety check: Did LinkedIn reject it?
+        error_toast = session.page.locator('div.artdeco-toast-item--error')
+        if error_toast.count() > 0:
+            toast_text = error_toast.first.inner_text().strip()
+            logger.warning(colored(f"❌ LinkedIn rejected the request! Reason: {toast_text}", "red", attrs=["bold"]))
+            
+            # Dismiss the modal so we can cleanly exit
+            close_btn = dialog.locator('button[aria-label="Dismiss"]')
+            if close_btn.count() > 0:
+                close_btn.first.click()
+            return False
+
         logger.debug("Connection request with note sent")
         return True
     
