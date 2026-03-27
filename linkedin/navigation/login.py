@@ -197,7 +197,7 @@ def init_playwright_session(session: "AccountSession", handle: str):
     else:
         goto_page(
             session,
-            action=lambda: session.page.goto(LINKEDIN_FEED_URL),
+            action=lambda: session.page.goto(LINKEDIN_FEED_URL, wait_until="domcontentloaded"),
             expected_url_pattern="/feed",
             timeout=30_000,
             error_message="Saved session invalid",
