@@ -174,8 +174,8 @@ class AccountSession:
             return
 
         from linkedin.db.profiles import save_scraped_profile
-        min_api_delay = max(min_delay / len(urls), MIN_API_DELAY)
-        max_api_delay = max(max_delay / len(urls), MAX_API_DELAY)
+        min_api_delay = max(lower / len(urls), MIN_API_DELAY)
+        max_api_delay = max(upper / len(urls), MAX_API_DELAY)
         api = PlaywrightLinkedinAPI(session=self)
 
         for url in urls:
