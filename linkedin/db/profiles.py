@@ -293,6 +293,54 @@ def save_message_sent(session: "AccountSession", public_identifier: str, message
         analyze_conversation(db, public_identifier)
 
 
+def save_conversation_history(session: "AccountSession", public_identifier: str, messages: List[Dict[str, str]]):
+    """
+    Save multiple messages from a conversation. Deduplicates based on text.
+    """
+    from linkedin.db.models import MessageEntry
+    from sqlalchemy import func
+    
+    db = session.db_session
+    profile_db = db.get(Profile, public_identifier)
+    if not profile_db or not messages:
+        return
+
+    # Get existing message texts to avoid duplicates
+    existing_texts = {m.text for m in profile_db.messages}
+    
+    new_count = 0
+    for msg in messages:
+        text = msg.get("text")
+        if text and text not in existing_texts:
+            sender = msg.get("sender", "Unknown")
+            # Heuristic to detect direction: if sender is NOT 'You', it's incoming
+            direction = "incoming" if sender != "You" else "outgoing"
+            
+            entry = MessageEntry(
+                profile_id=public_identifier,
+                direction=direction,
+                text=text,
+                sender_name=sender
+            )
+            db.add(entry)
+            new_count += 1
+            
+            # Update last state if it's the most recent incoming
+            if direction == "incoming":
+                profile_db.last_received_message = text
+                profile_db.last_received_at = func.now()
+
+    if new_count > 0:
+        db.commit()
+        logger.info(f"🧬 Synced {new_count} new messages for {public_identifier}")
+        
+        # Trigger AI Analysis
+        from linkedin.db.analytics import analyze_conversation
+        analyze_conversation(db, public_identifier)
+    else:
+        logger.debug(f"No new messages to sync for {public_identifier}")
+
+
 def save_received_message(session: "AccountSession", public_identifier: str, message: str):
     from linkedin.db.models import MessageEntry
     from sqlalchemy import func

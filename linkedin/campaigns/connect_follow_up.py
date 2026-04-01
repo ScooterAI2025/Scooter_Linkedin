@@ -144,10 +144,34 @@ def process_profile_row(
             if enrich_only: return None, current_state
             new_state = get_connection_status(session, profile)
             profile = profile if new_state == ProfileState.CONNECTED else None
+            
+            # 🧬 If they just accepted, sync their thread to see if they sent a "Hello" or "Accepted" message
+            if new_state == ProfileState.CONNECTED and profile:
+                from linkedin.db.profiles import save_conversation_history
+                from linkedin.actions.chat import fetch_latest_messages
+                try:
+                    logger.info(f"🧬 New Connection! Syncing initial conversational memory for {public_identifier}...")
+                    chat_msgs = fetch_latest_messages(handle, profile, limit=5)
+                    if chat_msgs:
+                        save_conversation_history(session, public_identifier, chat_msgs)
+                except Exception as e:
+                    logger.warning(f"⚠️ Memory Sync failed (skipping): {e}")
+
             session.wait(long_pause=True)  # <-- Pacing delay after checking status
         case ProfileState.CONNECTED:
             if enrich_only: return None, current_state
-            from linkedin.db.profiles import save_message_sent
+            from linkedin.db.profiles import save_message_sent, save_conversation_history
+            from linkedin.actions.chat import fetch_latest_messages
+            
+            # 🧬 MEMORY BRIDGE: Sync conversation history before follow-up
+            try:
+                logger.info(f"🧬 Syncing conversational memory for {public_identifier}...")
+                chat_msgs = fetch_latest_messages(handle, profile, limit=7)
+                if chat_msgs:
+                    save_conversation_history(session, public_identifier, chat_msgs)
+            except Exception as e:
+                logger.warning(f"⚠️ Memory Sync failed for {public_identifier} (Skipping): {e}")
+
             status, msg_text = send_follow_up_message(
                 handle=handle,
                 profile=profile,
