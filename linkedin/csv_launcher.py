@@ -16,10 +16,25 @@ logger = logging.getLogger(__name__)
 
 def load_profiles_df(csv_path: Path | str):
     csv_path = Path(csv_path)
+    print(f"📂 [BOT] Loading CSV with ROBUST parser: {csv_path.name}")
     if not csv_path.is_file():
         raise FileNotFoundError(f"CSV file not found: {csv_path}")
 
-    df = pd.read_csv(csv_path)
+    import csv
+    with open(csv_path, "r", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        header = next(reader, [])
+        # Fix: ensure 'source' exists if not already in header (matches ui_server logic)
+        if len(header) > 0 and 'source' not in header:
+            header.append('source')
+        data = []
+        for row in reader:
+            # Ensure every row has the same number of columns as the header
+            while len(row) < len(header):
+                row.append("")
+            data.append(row[:len(header)])
+            
+    df = pd.DataFrame(data, columns=header)
 
     possible_cols = ["url", "linkedin_url", "profile_url"]
     url_column = next(

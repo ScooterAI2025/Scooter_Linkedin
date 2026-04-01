@@ -12,6 +12,9 @@ logging.basicConfig(
 import argparse
 
 if __name__ == "__main__":
+    print("🚀 [BOT] System Initializing...")
+    sys.stdout.flush()
+    
     parser = argparse.ArgumentParser()
     parser.add_argument("handle", nargs="?", default=None)
     parser.add_argument("--enrich-only", action="store_true")

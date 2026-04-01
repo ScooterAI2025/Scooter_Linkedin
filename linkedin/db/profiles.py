@@ -264,7 +264,7 @@ def set_profile_state(session: "AccountSession", public_identifier, new_state: s
     logger.info(f"{public_identifier} {log_msg}")
 
 
-def save_message_sent(session: "AccountSession", public_identifier: str, message: str):
+def save_message_sent(session: "AccountSession", public_identifier: str, message: str, job_id: str = None):
     from linkedin.db.models import MessageEntry
     db = session.db_session
     row = db.get(Profile, public_identifier)
@@ -272,6 +272,9 @@ def save_message_sent(session: "AccountSession", public_identifier: str, message
         row.last_message = message
         row.last_message_at = func.now()
         row.state = ProfileState.COMPLETED.value
+        
+        if job_id:
+            row.last_job_id = job_id
         
         # Add to history
         entry = MessageEntry(

@@ -26,7 +26,7 @@ class Profile(Base):
     state = Column(String, nullable=False, default="discovered")
     
     # Forensic Analytics
-    last_job_id = Column(Integer, nullable=True)
+    last_job_id = Column(String, nullable=True)
     
     # Messaging history (Outgoing)
     last_message = Column(String, nullable=True)

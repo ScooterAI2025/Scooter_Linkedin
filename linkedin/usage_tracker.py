@@ -29,8 +29,8 @@ SAFETY_CONFIG = {
     "enrich_profiles": {
         "monthly_target_range": (200, 350),
         "weekly_target_range": (50, 80),
-        "daily_normal": (5, 12),
-        "hard_cap": 15,
+        "daily_normal": (20, 25),
+        "hard_cap": 30,
         "between_profiles_delay": (30, 75),
         "batch_pause_after": (3, 4),
         "batch_pause_duration": (180, 420)
@@ -342,7 +342,14 @@ class UsageTracker:
              logger.warning(colored(f"🛑 MONTHLY LIMIT REACHED for {handle}: {monthly_count}/{monthly_limit} {metric}.", "red", attrs=["bold"]))
              return False
 
-        # 2. Daily Cap Check
+        # 2. Weekly Cap Check (New)
+        weekly_count = self.get_count(handle, metric, "weekly")
+        weekly_limit = SAFETY_CONFIG[category].get("weekly_target_range", (999, 999))[1]
+        if weekly_count >= weekly_limit:
+             logger.warning(colored(f"🛑 WEEKLY LIMIT REACHED for {handle}: {weekly_count}/{weekly_limit} {metric}.", "red", attrs=["bold"]))
+             return False
+
+        # 3. Daily Cap Check
         if daily_count >= daily_limit:
             logger.warning(colored(f"🛑 DAILY LIMIT REACHED for {handle}: {daily_count}/{daily_limit} {metric} today.", "red", attrs=["bold"]))
             return False

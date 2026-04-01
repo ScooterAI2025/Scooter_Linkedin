@@ -13,6 +13,8 @@ from linkedin.navigation.enums import ProfileState
 logger = logging.getLogger(__name__)
 
 
+_engines = {}
+
 class Database:
     """
     One account → one database.
@@ -20,24 +22,38 @@ class Database:
     Sync to cloud happens ONLY when close() is called.
     """
 
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_path: str = None, force_local: bool = False):
         import os
+        from sqlalchemy.pool import NullPool
         
         # Check for Cloud SQL connection string first
         self.db_url = os.getenv("DATABASE_URL")
         
-        if self.db_url:
+        if self.db_url and not force_local:
             logger.info("Initializing remote DB (Cloud SQL)")
-            # Postgres doesn't need check_same_thread
-            self.engine = create_engine(self.db_url)
+            if self.db_url not in _engines:
+                # Postgres doesn't need check_same_thread.
+                # Use NullPool to ensure connections are closed immediately.
+                _engines[self.db_url] = create_engine(
+                    self.db_url, 
+                    poolclass=NullPool,
+                    pool_recycle=3600
+                )
+            self.engine = _engines[self.db_url]
         else:
             # Fallback to local SQLite
             if not db_path:
-                raise ValueError("db_path required if DATABASE_URL not set")
+                raise ValueError("db_path required if DATABASE_URL not set and force_local=True")
                 
             self.db_url = f"sqlite:///{db_path}"
             logger.info("Initializing local DB → %s", Path(db_path).name)
-            self.engine = create_engine(self.db_url, connect_args={"check_same_thread": False})
+            if self.db_url not in _engines:
+                _engines[self.db_url] = create_engine(
+                    self.db_url, 
+                    connect_args={"check_same_thread": False},
+                    poolclass=NullPool
+                )
+            self.engine = _engines[self.db_url]
 
         Base.metadata.create_all(bind=self.engine)
         

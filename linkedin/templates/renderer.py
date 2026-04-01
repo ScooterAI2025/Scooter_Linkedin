@@ -90,6 +90,8 @@ def render_template(
         if not booking_link:
             booking_link = session.config.get("booking_link", None)
 
-        rendered += f"\n{booking_link}" if booking_link else ""
+        # 🛡️ DEDUPLICATION: If the link is already in the AI's message, don't add it again at the bottom.
+        if booking_link and booking_link not in rendered:
+            rendered += f"\n{booking_link}"
         
     return rendered
